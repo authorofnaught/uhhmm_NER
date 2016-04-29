@@ -7,17 +7,15 @@ fi
 
 LANGUAGE=$1
 
-#MODEL_DIR="/Users/authorofnaught/Projects/LORELEI/NER/hausa_ne_model/" # directory for trained model
 MODEL_DIR="/Users/authorofnaught/Projects/LORELEI/NER/MODEL-DIR/${LANGUAGE}/" # directory for trained model
-LTF_DIR="/Users/authorofnaught/Projects/LORELEI/NER/LTF-DIR/${LANGUAGE}/" # directory containing LTF files
-LTF_DIR_ABG1="/Users/authorofnaught/Projects/LORELEI/NER/LTF-ABG/${LANGUAGE}_100_approxiters/" # directory containing LTF files
-LTF_DIR_ABG2="/Users/authorofnaught/Projects/LORELEI/NER/LTF-ABG/${LANGUAGE}_1000_approxiters/" # directory containing LTF files
+LTF_DIR="/Users/authorofnaught/Projects/LORELEI/NER/LTF-DIR/${LANGUAGE}/" # directory containing original LRLP LTF files
+LTF_DIR_ABG1="/Users/authorofnaught/Projects/LORELEI/NER/LTF-ABG/${LANGUAGE}_100_approxiters/" # directory containing LTF files with uhhmm features
+LTF_DIR_ABG2="/Users/authorofnaught/Projects/LORELEI/NER/LTF-ABG/${LANGUAGE}_1000_approxiters/" # directory containing LTF files with uhhmm features
 SYS_LAF_DIR="/Users/authorofnaught/Projects/LORELEI/NER/SYS-LAF/${LANGUAGE}/" # directory for tagger output (LAF files)
 TRAIN_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TRAIN-SCP/${LANGUAGE}.txt" # script file containing paths to LAF files (one per line)
-TRAIN_ALL_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TRAIN-SCP/${LANGUAGE}ALL.txt"
-#TRAIN_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TRAIN-SCP/${LANGUAGE}FULL.txt" # script file containing paths to LAF files (one per line)
+TRAIN_ALL_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TRAIN-SCP/${LANGUAGE}ALL.txt" # same, but with all files listed if training and testing on same data
 TEST_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TEST-SCP/${LANGUAGE}.txt" # script file containing paths to LTF files (one per line)
-TEST_ALL_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TEST-SCP/${LANGUAGE}ALL.txt"
+TEST_ALL_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TEST-SCP/${LANGUAGE}ALL.txt" # same, but with all files listed if training and testing on same data
 REF_LAF_DIR="/Users/authorofnaught/Projects/LORELEI/NER/REF-LAF/${LANGUAGE}/" # directory containing gold standard LAF files
 
 echo
