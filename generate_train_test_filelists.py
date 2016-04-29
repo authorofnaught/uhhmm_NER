@@ -1,12 +1,13 @@
 #!/usr/bin/python
 import os
+import sys
 from os.path import join 
 
 
 def main(args):
 
     if len(args) != 4:
-        print("Usage: "+sys.argv[0]+" [laf directory] [ltf directory] [laf training filename] [ltf testing filename]")
+        print("Usage: "+sys.argv[0]+" [full laf dir path] [full ltf dir path] [laf training filename] [ltf testing filename]")
         exit(1)
 
     laf_dir=args[0]

@@ -184,6 +184,15 @@ if __name__ == '__main__':
     if not is_empty(trainf):
         modelf = os.path.join(args.model_dir, 'tagger.crf');
 
+        """
+        Select the algorithm to be used in training by uncommenting it.
+        What parameters are used with each algorithm can be found in the CRFSuite documentation at 
+        http://www.chokkan.org/software/crfsuite/manual.html
+
+        Leave all '-p' parameters commented to use default values.
+
+        """
+
         # Train with passive aggressive algorithm
         cmd = ['crfsuite', 'learn',
                '-m', modelf,
