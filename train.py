@@ -56,12 +56,10 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
             try:
                 # Extract tokens.
                 try:
-                    tokens, token_ids, token_onsets, token_offsets, token_As, token_Bs, token_Gs = ltf_doc.tokenizedWithABG();
-#                    print("\t\tAs Bs and Gs found.")
+                    tokens, token_ids, token_onsets, token_offsets, token_A_cats, token_B_cats, token_G_cats = ltf_doc.tokenizedWithABG();
                 except:
                     tokens, token_ids, token_onsets, token_offsets = ltf_doc.tokenized();
-                    token_As = token_Bs = token_Gs = None;
-#                    print("\t\tNo As Bs and Gs.")
+                    token_A_cats = token_B_cats = token_G_cats = None;
                     exit()
                 
                 # Convert mentions to format expected by the encoder; that is,
@@ -88,9 +86,8 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
                     prev_mention_offset = mention_offset;
                 mentions_ = temp_mentions_;
 
-                # Extract features/targets and write to file in CRFSuite
-                # format.
-                feats, targets = enc.get_feats_targets(tokens, mentions_, token_As, token_Bs, token_Gs);
+                feats, targets = enc.get_feats_targets(tokens, mentions_, token_A_cats, token_B_cats, token_G_cats);
+
             except:
                 logger.warn('Feature extraction failed for %s. Skipping.' % laf);
                 continue;
@@ -177,8 +174,9 @@ if __name__ == '__main__':
     # Train.
     trainf = os.path.join(temp_dir, 'train.txt')
     write_train_data(args.lafs, args.ltf_dir, enc, trainf);
-    import shutil #DEBUG
-    shutil.copyfile(trainf, "/Users/authorofnaught/Projects/LORELEI/BOLT_Hausa/tools/ne-tagger/trainingfile") #DEBUG
+
+    shutil.copyfile(trainf, "trainingfile") #DEBUG
+
     def is_empty(fn):
         return os.stat(fn).st_size == 0;
     if not is_empty(trainf):
@@ -193,34 +191,37 @@ if __name__ == '__main__':
 
         """
 
-        # Train with passive aggressive algorithm
-        cmd = ['crfsuite', 'learn',
-               '-m', modelf,
-               '-a', 'pa', # Train with passive aggressive algorithm.
-               '-p', 'type=%d' % args.update,
-               '-p', 'c=%f' % args.aggressiveness,
-               '-p', 'error_sensitive=%d' % True,
-               '-p', 'averaging=%d' % args.use_averaging,
-               '-p', 'max_iterations=%d' % args.max_iter,
-               '-p', 'epsilon=%f' % args.epsilon,
-               '-p', 'feature.possible_transitions=0',
-               trainf];
-#        # Train with gradient descent using L-BFGS method
+#        # Train with passive aggressive algorithm
 #        cmd = ['crfsuite', 'learn',
 #               '-m', modelf,
-#               '-a', 'lbfgs', # Train with gradient descent using L-BFGS method
-#               '-p', 'c1=1',
-#               '-p', 'c2=1',
+#               '-a', 'pa', # Train with passive aggressive algorithm.
+#               '-p', 'type=%d' % args.update,
+#               '-p', 'c=%f' % args.aggressiveness,
+#               '-p', 'error_sensitive=%d' % True,
+#               '-p', 'averaging=%d' % args.use_averaging,
 #               '-p', 'max_iterations=%d' % args.max_iter,
-#               #'-p', 'num_memories=6',
 #               '-p', 'epsilon=%f' % args.epsilon,
-#               #'-p', 'stop=10',
-#               #'-p', 'delta=1e-5',
-#               #'-p', 'linesearch=MoreThuente',
-#               #'-p', 'max_linesearch=20',
+#               '-p', 'feature.possible_transitions=0',
 #               trainf];
+        # Train with gradient descent using L-BFGS method
+        cmd = ['crfsuite', 'learn',
+#               '-g', '5',
+               '--log-to-file',
+#               '--split=5',
+#               '-x',
+               '-m', modelf,
+               '-a', 'lbfgs', # Train with gradient descent using L-BFGS method
+               '-p', 'c1=1.0',
+               '-p', 'c2=1.0',
+               #'-p', 'max_iterations=%d' % args.max_iter,
+               #'-p', 'num_memories=6',
+               #'-p', 'epsilon=%f' % args.epsilon,
+               #'-p', 'stop=10',
+               #'-p', 'delta=1e-5',
+               #'-p', 'linesearch=MoreThuente',
+               #'-p', 'max_linesearch=20',
+               trainf];
 #        # Train with stochastic gradient descent with L2 regularization term
-#        # TODO: amend parameters to those use with this algorithm
 #        cmd = ['crfsuite', 'learn',
 #               '-m', modelf,
 #               '-a', 'l2sgd', # Train with stochastic gradient descent with L2 regularization term
@@ -234,30 +235,18 @@ if __name__ == '__main__':
 #               #'-p', 'feature.possible_transitions=0',
 #               trainf];
 #        # Train with averaged perceptron
-#        # TODO: amend parameters to those use with this algorithm
 #        cmd = ['crfsuite', 'learn',
 #               '-m', modelf,
 #               '-a', 'ap', # Train with averaged perceptron 
-#               '-p', 'type=%d' % args.update,
-#               '-p', 'c=%f' % args.aggressiveness,
-#               '-p', 'error_sensitive=%d' % True,
-#               '-p', 'averaging=%d' % args.use_averaging,
 #               '-p', 'max_iterations=%d' % args.max_iter,
 #               '-p', 'epsilon=%f' % args.epsilon,
-#               '-p', 'feature.possible_transitions=0',
 #               trainf];
 #        # Train with adaptive regularization of weight vector
-#        # TODO: amend parameters to those use with this algorithm
 #        cmd = ['crfsuite', 'learn',
 #               '-m', modelf,
 #               '-a', 'arow', # Train with adaptive regularization of weight vector
-#               '-p', 'type=%d' % args.update,
-#               '-p', 'c=%f' % args.aggressiveness,
-#               '-p', 'error_sensitive=%d' % True,
-#               '-p', 'averaging=%d' % args.use_averaging,
 #               '-p', 'max_iterations=%d' % args.max_iter,
 #               '-p', 'epsilon=%f' % args.epsilon,
-#               '-p', 'feature.possible_transitions=0',
 #               trainf];
         with open(os.devnull, 'w') as f:
             if args.display_progress:

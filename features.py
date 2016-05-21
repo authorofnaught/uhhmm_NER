@@ -64,12 +64,28 @@ class Encoder(object):
         feats = []
         for ii, token in enumerate(tokens):
             token_feats = self.get_feats_for_token(token)
-            if token_As != None:
-                token_feats.append(token_As[ii])
-            if token_Bs != None:
-                token_feats.append(token_Bs[ii])
-            if token_Gs != None:
-                token_feats.append(token_Gs[ii])
+
+######################################################################################################
+###### Changes to inclusion of ABG features in feature sets can be made here #########################
+
+            """ Add A-B-G triple as feature """
+#            if token_As != None and token_Bs != None and token_Gs != None:
+#                token_feats.append("{}-{}-{}".format(str(token_As[ii]), str(token_Bs[ii]), str(token_Gs[ii])))
+            """ Add A-B double as feature """
+#            if token_As != None and token_Bs != None:
+#                token_feats.append("{}-{}".format(str(token_As[ii]), str(token_Bs[ii])))
+            """ Add A as feature """
+#            if token_As != None:
+#                token_feats.append(token_As[ii])
+            """ Add B as feature """
+#            if token_Bs != None:
+#                token_feats.append(token_Bs[ii])
+            """ Add G as feature """
+#            if token_Gs != None:
+#                token_feats.append(token_Gs[ii])
+
+######################################################################################################
+
             feats.append(token_feats)
         feats = zip(*feats);
         new_feats = [];

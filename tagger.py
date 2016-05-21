@@ -67,38 +67,33 @@ def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext):
             token_As = token_Bs = token_Gs = None
         txt = ltf_doc.text();
         spans = aligner.align(txt, tokens);
-#        print("Extracted tokens...")
 
         # Extract features
         featsf = os.path.join(temp_dir, 'feats.txt');
         feats = enc.get_feats(tokens, token_As, token_Bs, token_Gs);
         write_crfsuite_file(featsf, feats);
-#        print("Extracted features...")
 
-#        shutil.copy(featsf, "temp")
+        shutil.copy(featsf, "featuresfile") #DEBUG
 
         # Tag.
         tagsf = os.path.join(temp_dir, 'tags.txt');
         cmd = ['crfsuite', 'tag',
-               '--marginal',
-#               '--probability',
+#               '--marginal',           # outputs probability of each tag as extra field in tagsfile
+#               '--probability',        # outputs probability of tag sequence at top of tagsfile
                '-m', modelf,
                featsf];
         with open(tagsf, 'w') as f:
             subprocess.call(cmd, stdout=f);
-#        print("Tagged...")
 
-        shutil.copy(tagsf, "temp")
+        shutil.copy(tagsf, "tagsfile") #DEBUG
 
         # Load tagged output.
         with open(tagsf, 'r') as f:
             tags = [line.strip() for line in f];
             tags = tags[:len(tokens)];
-#        print("Loaded tagged output...")
 
         # Chunk tags.
         chunks = chunker.tags_to_chunks(tags);
-#        print("Chunked tags...")
 
         # Construct mentions.
         doc_id = ltf_doc.doc_id;
@@ -127,14 +122,12 @@ def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext):
                             ]);
 
             n += 1;
-#        print("Constructed mentions...")
 
         # Write detected mentions to LAF file.
         bn = os.path.basename(ltf);
         laf = os.path.join(tagged_dir, bn.replace('.ltf.xml', tagged_ext));
         laf_doc = LAFDocument(mentions=mentions, lang=ltf_doc.lang, doc_id=doc_id);
         laf_doc.write_to_file(laf);
-#        print("Wrote detected mentions to LAF file...")
     except:
         logger.warn('Problem with %s. Skipping.' % ltf);
 
