@@ -14,7 +14,7 @@ from joblib.parallel import Parallel, delayed;
 from features import OrthographicEncoder;
 from io_ import load_doc, LTFDocument, LAFDocument, write_crfsuite_file;
 from logger import configure_logger;
-from util import convert_extents, sort_mentions;
+from util import convert_extents, sort_mentions, get_ABG_value_sets;
 
 logger = logging.getLogger();
 configure_logger(logger);
@@ -43,6 +43,46 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
         CRFsuite training file.
     """
     with open(trainf, 'w') as f:
+
+        A_vals = set()
+        B_vals = set()
+        G_vals = set()
+        ltfs = []
+
+        for laf in lafs:
+            # Check that the LTF and LAF are valid.
+            bn = os.path.basename(laf);
+            ltf = os.path.join(ltf_dir, bn.replace('.laf.xml', '.ltf.xml'));
+            ltfs.append(ltf)
+
+        A_vals, B_vals, G_vals = get_ABG_value_sets(ltfs, logger)
+
+
+#            laf_doc = load_doc(laf, LAFDocument, logger);
+#            ltf_doc = load_doc(ltf, LTFDocument, logger);
+#            if laf_doc is None or ltf_doc is None:
+#                continue;
+            
+            # Extract features/targets.
+#            try:
+                # Extract tokens.
+#                try:
+#                    tokens, token_ids, token_onsets, token_offsets, token_As, token_Bs, token_Gs = ltf_doc.tokenizedWithABG();
+#                except:
+#                    tokens, token_ids, token_onsets, token_offsets = ltf_doc.tokenized();
+#                    token_As = token_Bs = token_Gs = None;
+#                if token_As != None:
+#                    A_vals.update(token_As)
+#                if token_Bs != None:
+#                    B_vals.update(token_Bs)
+#                if token_Gs != None:
+#                    G_vals.update(token_Gs)
+#            except:
+#                logger.warn('ABG values not found for %s. Skipping.' % laf);
+#                continue;
+
+        print("Found the following number of values for ABG:\nA: {}\nB: {}\nG: {}\n".format(len(A_vals), len(B_vals), len(G_vals)))
+
         for laf in lafs:
             # Check that the LTF and LAF are valid.
             bn = os.path.basename(laf);
@@ -56,11 +96,10 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
             try:
                 # Extract tokens.
                 try:
-                    tokens, token_ids, token_onsets, token_offsets, token_A_cats, token_B_cats, token_G_cats = ltf_doc.tokenizedWithABG();
+                    tokens, token_ids, token_onsets, token_offsets, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js = ltf_doc.tokenizedWithABG();
                 except:
-                    tokens, token_ids, token_onsets, token_offsets = ltf_doc.tokenized();
-                    token_A_cats = token_B_cats = token_G_cats = None;
-                    exit()
+                    tokens, token_ids, token_onsets, token_offsets, token_nums = ltf_doc.tokenized();
+                    token_As = token_Bs = token_Gs = token_Fs = token_Js = None;
                 
                 # Convert mentions to format expected by the encoder; that is,
                 # (tag, token_onset, token_offset).
@@ -86,7 +125,7 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
                     prev_mention_offset = mention_offset;
                 mentions_ = temp_mentions_;
 
-                feats, targets = enc.get_feats_targets(tokens, mentions_, token_A_cats, token_B_cats, token_G_cats);
+                feats, targets = enc.get_feats_targets(tokens, mentions_, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js, A_vals, B_vals, G_vals);
 
             except:
                 logger.warn('Feature extraction failed for %s. Skipping.' % laf);
@@ -205,10 +244,10 @@ if __name__ == '__main__':
 #               trainf];
         # Train with gradient descent using L-BFGS method
         cmd = ['crfsuite', 'learn',
-#               '-g', '5',
-               '--log-to-file',
-#               '--split=5',
-#               '-x',
+              # '-g', '5',
+              # '--log-to-file',
+              # '--split=5',
+              # '-x',
                '-m', modelf,
                '-a', 'lbfgs', # Train with gradient descent using L-BFGS method
                '-p', 'c1=1.0',

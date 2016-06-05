@@ -3,7 +3,7 @@
 __all__ = ['convert_extents', 'sort_mentions'];
 
 from bisect import bisect, bisect_left;
-
+from io_ import load_doc, LTFDocument
 
 def convert_extents(char_onsets, char_offsets, token_onsets, token_offsets):
     """Convert from char onset/offset extends to token onset/offset extents.
@@ -40,3 +40,42 @@ def sort_mentions(mentions):
         List of mentions, each represented as a tuple of form (tag, token_onset, token_offset).
     """
     mentions.sort(key=lambda x: (x[1], x[2]));
+
+def get_ABG_value_sets(ltfs, logger):
+    """
+    Scan through all LTF files in a directory and return the lists
+    of values found for each of A, B, and G.
+    Since uhhmm determines the number of values for each of this categories
+    at runtime, it is not possible to know before retrieving the output of the system.
+    
+    """
+    
+    A_vals = set()
+    B_vals = set()
+    G_vals = set()
+
+    for ltf in ltfs:
+        # Check that the LTF is valid.
+        ltf_doc = load_doc(ltf, LTFDocument, logger);
+        if ltf_doc is None:
+            continue;
+        
+        # Extract features/targets.
+        try:
+            # Extract tokens.
+            try:
+                tokens, token_ids, token_onsets, token_offsets, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js = ltf_doc.tokenizedWithABG();
+            except:
+                tokens, token_ids, token_onsets, token_offsets, token_nums = ltf_doc.tokenized();
+                token_As = token_Bs = token_Gs = None;
+            if token_As != None:
+                A_vals.update(token_As)
+            if token_Bs != None:
+                B_vals.update(token_Bs)
+            if token_Gs != None:
+                G_vals.update(token_Gs)
+        except:
+            logger.warn('ABG values not found for %s. Skipping.' % ltf);
+            continue;
+
+    return A_vals, B_vals, G_vals

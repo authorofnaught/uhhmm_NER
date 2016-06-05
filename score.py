@@ -41,7 +41,7 @@ def calc_stats(sys_laf, ref_dir, ltf_dir):
     # Calculate hits, misses, and false alarms.
     n_hit = n_fa = n_miss = 0 #WAB
     try:
-        tokens, token_ids, token_onsets, token_offsets = ltf_doc.tokenized();
+        tokens, token_ids, token_onsets, token_offsets, token_nums = ltf_doc.tokenized();
 
         # Convert mentions to (token_onset, token_offset, tag) format.
         sys_mentions = sys_doc.mentions()

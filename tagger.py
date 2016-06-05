@@ -15,12 +15,15 @@ from chunk import BILOUChunkEncoder;
 from features import OrthographicEncoder;
 from io_ import load_doc, LTFDocument, LAFDocument, write_crfsuite_file;
 from logger import configure_logger;
+from util import get_ABG_value_sets
+
+from math import log;
 
 logger = logging.getLogger();
 configure_logger(logger);
 
 
-def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext):
+def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext, threshold, A_vals, B_vals, G_vals):
     """Extract features for tokenization in LTF file and tag named entities.
 
     Inputs
@@ -48,6 +51,7 @@ def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext):
     tagged_ext : str
         Extension to used for output LAF files.
     """
+
     # Create working directory.                                              
     temp_dir = tempfile.mkdtemp();
 
@@ -61,16 +65,17 @@ def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext):
     try:
         # Extract tokens.
         try:
-            tokens, token_ids, token_onsets, token_offsets, token_As, token_Bs, token_Gs = ltf_doc.tokenizedWithABG();
+            tokens, token_ids, token_onsets, token_offsets, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js = ltf_doc.tokenizedWithABG();
         except:
-            tokens, token_ids, token_onsets, token_offsets = ltf_doc.tokenized();
-            token_As = token_Bs = token_Gs = None
+            tokens, token_ids, token_onsets, token_offsets, token_nums = ltf_doc.tokenized();
+            token_As = token_Bs = token_Gs = token_Fs = token_Js = None
         txt = ltf_doc.text();
         spans = aligner.align(txt, tokens);
 
         # Extract features
         featsf = os.path.join(temp_dir, 'feats.txt');
-        feats = enc.get_feats(tokens, token_As, token_Bs, token_Gs);
+#        feats = enc.get_feats(tokens, token_As, token_Bs, token_Gs);
+        feats = enc.get_feats(tokens, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js, A_vals, B_vals, G_vals);
         write_crfsuite_file(featsf, feats);
 
         shutil.copy(featsf, "featuresfile") #DEBUG
@@ -78,12 +83,189 @@ def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext):
         # Tag.
         tagsf = os.path.join(temp_dir, 'tags.txt');
         cmd = ['crfsuite', 'tag',
-#               '--marginal',           # outputs probability of each tag as extra field in tagsfile
+               '--marginal',           # outputs probability of each tag as extra field in tagsfile
 #               '--probability',        # outputs probability of tag sequence at top of tagsfile
                '-m', modelf,
                featsf];
         with open(tagsf, 'w') as f:
             subprocess.call(cmd, stdout=f);
+
+        shutil.copy(tagsf, "taggingprobs") #DEBUG
+
+        # Look for NEs in the tagfile with marginal probs.
+        # If the tag is 'O', keep it.
+        # If the tag is anything else, keep if marginal prob is above threshold.
+
+        tagsf2 = os.path.join(temp_dir, 'tags2.txt');
+
+        
+        """
+        Helper method for checking the tag sequence output in the section below. 
+        Checks for full BI*L sequence, returning that seqeunce if mean logprob exceeds 
+        threshold logprob - returns sequence of O's of equal length otherwise.
+        If the seqeuence contains only one tag, that tag is returned as a U tag.
+        
+        """
+        def _check_BIL_sequence(tags, probs, threshold):
+
+            nextpart = ''
+
+            if len(tags) < 1:
+
+                logging.warn("Empty tag sequence submitted as BI*L sequence.")
+
+            elif len(tags) == 1:
+
+                logging.warn("Tag sequence of length 1 submitted as BI*L sequence.")
+
+                if probs[0] >= threshold:   # compare probs, not abs vals of logprobs, hence >= and not <=
+
+                    nextpart = 'U{}'.format(tags[0][1:])
+
+                else: 
+
+                    nextpart = 'O\n'
+
+            else:
+
+                try:
+
+                    assert tags[0][0] == 'B' and tags[-1][0] == 'L'
+
+                except AssertionError:
+
+                    logging.warn('Incomplete BI*L sequence submitted.')
+                    tags[0] = 'B{}'.format(tags[0][1:])
+                    tags[-1] = 'L{}'.format(tags[-1][1:])
+
+#                NElogProb = reduce(lambda x, y: (log(x) * -1) + (log(y) * -1), probs)/len(probs)
+#                if NElogProb <= (log(threshold) * -1): # compare abs vals of logprobs, hence <= and not >=
+                count = 0
+                for prob in probs:
+                    if prob >= threshold:
+                        count+=1
+
+                if count >= len(probs)/2.0:
+
+                    nextpart = ''.join(tags)
+
+                else:
+
+                    nextpart = 'O\n'*len(NEtags)
+
+            return nextpart
+
+
+        """ Retain or reject NE hypotheses based on probs and write new tags file """
+        with open(tagsf2, 'w') as f_out:
+            with open(tagsf, 'r') as f_in:
+                NEtags = None
+                NEprobs = None
+                for line in f_in.read().split('\n'):
+
+                    try:
+
+                        assert ':' in line
+
+                        tag, prob = line.strip().split(':')
+
+
+                        if tag[0] == 'O':
+                        # if seq in play, check seq
+                        # write tag
+
+                            if NEtags:
+
+                                f_out.write(_check_BIL_sequence(NEtags, NEprobs, threshold))
+                                NEtags = None
+                                NEprobs = None
+                                
+                            f_out.write(tag+'\n')
+
+
+                        elif tag[0] == 'U':
+                        # if seq in play, check seq
+                        # if prob >= threshold, write tag
+                        # else, write tag = O
+
+                            if NEtags:
+
+                                f_out.write(_check_BIL_sequence(NEtags, NEprobs, threshold))
+                                NEtags = None
+                                NEprobs = None
+                            
+                            if float(prob) >= threshold: # compare probs, not abs vals of logprobs, hence >= and not <=
+
+                                f_out.write(tag+'\n')
+
+                            else:
+
+                                f_out.write('O\n')
+
+
+                        elif tag[0] == 'B':
+                        # if seq in play, check seq
+                        # start new seq with tag
+
+                            if NEtags:
+
+                                f_out.write(_check_BIL_sequence(NEtags, NEprobs, threshold))
+
+                            NEtags = [tag+'\n']
+                            NEprobs = [float(prob)]
+
+
+                        elif tag[0] == 'I':
+                        # if seq in play, add tag to seq
+                        # else, start new seq with tag = B
+
+                            if NEtags:
+
+                                NEtags.append(tag+'\n')
+                                NEprobs.append(float(prob))
+
+                            else:
+
+                                logging.warn("Found an out of sequence I tag.")
+                                tag = 'B{}'.format(tag[1:])
+                                NEtags = [tag+'\n']
+                                NEprobs = [float(prob)]
+
+
+                        elif tag[0] == 'L':
+                        # if seq in play, add tag to seq and check seq
+                        # else, start new seq with tag = B
+
+                            if NEtags:
+
+                                NEtags.append(tag+'\n')
+                                NEprobs.append(float(prob))
+                                f_out.write(_check_BIL_sequence(NEtags, NEprobs, threshold))
+                                NEtags = None
+                                NEprobs = None
+
+                            else:
+
+                                logging.warn("Found an out of sequence L tag.")
+                                tag = 'B{}'.format(tag[1:])
+                                NEtags = [tag+'\n']
+                                NEprobs = [float(prob)]
+                                
+
+                    except AssertionError:
+
+                        pass
+#                        logging.warn('No ":" in line {}'.format(line))  #DEBUG
+
+                if NEtags: # Necessary if tagsf ends with an incomplete BI*L sequence
+
+                    f_out.write(_check_BIL_sequence(NEtags, NEprobs, threshold))
+                    NEtags = None
+                    NEprobs = None
+
+
+        tagsf = tagsf2  # Set the checked tag file as the new tag file
+        # Continue 
 
         shutil.copy(tagsf, "tagsfile") #DEBUG
 
@@ -159,6 +341,9 @@ if __name__ == '__main__':
     parser.add_argument('-j', nargs='?', default=1, type=int,
                         metavar='n', dest='n_jobs',
                         help='Set num threads to use (default: 1)');
+    parser.add_argument('-t', nargs='?', default=(2**-149), type=float,
+                        metavar='t', dest='threshold',
+                        help='Set threshold for NE probability (default: 2**-149)');
     args = parser.parse_args();
 
     if len(sys.argv) == 1:
@@ -177,6 +362,9 @@ if __name__ == '__main__':
     with open(encf, 'r') as f:
         enc = cPickle.load(f);
 
+    # Get values of A, B, and G now to pass to each call of tag_file.
+    A_vals, B_vals, G_vals = get_ABG_value_sets(args.ltfs, logger)
+
     # Perform tagging in parallel, dumping results to args.tagged_dir.
     n_jobs = min(len(args.ltfs), args.n_jobs);
     modelf = os.path.join(args.model_dir, 'tagger.crf');
@@ -184,4 +372,6 @@ if __name__ == '__main__':
     Parallel(n_jobs=n_jobs, verbose=0)(f(ltf, aligner, enc, chunker,
                                          modelf,
                                          args.tagged_dir,
-                                         args.ext) for ltf in args.ltfs);
+                                         args.ext, 
+                                         args.threshold,
+                                         A_vals, B_vals, G_vals) for ltf in args.ltfs);

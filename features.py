@@ -2,6 +2,7 @@
 """
 from functools import wraps;
 import re;
+import random;
 
 from chunk import BILOUChunkEncoder;
 from io_ import LTFDocument, LAFDocument;
@@ -47,7 +48,7 @@ class Encoder(object):
         """
         raise NotImplementedError;
 
-    def get_feats(self, tokens, token_As=None, token_Bs=None, token_Gs=None):
+    def get_feats(self, tokens, token_nums, token_As=None, token_Bs=None, token_Gs=None, token_Fs=None, token_Js=None, A_vals=None, B_vals=None, G_vals=None):
         """Return features corresponding to token sequence.
 
         Inputs
@@ -60,29 +61,97 @@ class Encoder(object):
         feats : lsit of tuples
             Feature vector sequence.
         """
+
 #        feats = [self.get_feats_for_token(token) for token in tokens];
         feats = []
+
         for ii, token in enumerate(tokens):
-            token_feats = self.get_feats_for_token(token)
 
 ######################################################################################################
-###### Changes to inclusion of ABG features in feature sets can be made here #########################
+###### Changes to inclusion of features in feature sets can be made here #############################
 
-            """ Add A-B-G triple as feature """
+            token_feats = []
+
+            """ Add prefix, suffix feats """
+#            token_feats = self.get_feats_for_token(token)
+
+            """ Add word feats """
+#            token_feats.extend(word_type(token))
+
+            """ Add A-B-G triple as non-binary feature """
 #            if token_As != None and token_Bs != None and token_Gs != None:
 #                token_feats.append("{}-{}-{}".format(str(token_As[ii]), str(token_Bs[ii]), str(token_Gs[ii])))
-            """ Add A-B double as feature """
+            """ Add A-B double as non-binary feature """
 #            if token_As != None and token_Bs != None:
 #                token_feats.append("{}-{}".format(str(token_As[ii]), str(token_Bs[ii])))
-            """ Add A as feature """
+            """ Add A as non-binary feature """
 #            if token_As != None:
 #                token_feats.append(token_As[ii])
-            """ Add B as feature """
+            """ Add B as non-binary feature """
 #            if token_Bs != None:
 #                token_feats.append(token_Bs[ii])
-            """ Add G as feature """
+            """ Add G as non-binary feature """
 #            if token_Gs != None:
 #                token_feats.append(token_Gs[ii])
+
+            """ Add random A values as features (use in order to check for performance at chance) """
+#            if A_vals != None:
+#                pseudo = random.choice(list(A_vals))
+#                for v in A_vals:
+#                    token_feats.append(pseudo == v)
+
+            """ Add random B values as features (use in order to check for performance at chance) """
+#            if B_vals != None:
+#                pseudo = random.choice(list(B_vals))
+#                for v in B_vals:
+#                    token_feats.append(pseudo == v)
+
+            """ Add random G values as features (use in order to check for performance at chance) """
+#            if G_vals != None:
+#                pseudo = random.choice(list(G_vals))
+#                for v in G_vals:
+#                    token_feats.append(pseudo == v)
+
+            """ Add random F values as features (use in order to check for performance at chance) """
+#            pseudo = random.choice([-1, 0, 1])
+#            for v in [-1, 0, 1]:
+#                token_feats.append(pseudo == v)
+
+            """ Add random J values as features (use in order to check for performance at chance) """
+#            pseudo = random.choice([-1, 0, 1])
+#            for v in [-1, 0, 1]:
+#                token_feats.append(pseudo == v)
+
+            """ Add A as binary feature (True or False for each possible value) """
+            if token_As != None and A_vals != None:
+                for v in A_vals:
+                    token_feats.append(token_As[ii] == v)
+
+            """ Add B as binary feature (True or False for each possible value) """
+            if token_Bs != None and B_vals != None:
+                for v in B_vals:
+                    token_feats.append(token_Bs[ii] == v)
+
+            """ Add G as binary feature (True or False for each possible value) """
+            if token_Gs != None and G_vals != None:
+                for v in G_vals:
+                    token_feats.append(token_Gs[ii] == v)
+
+            """ Add F as binary feature (True or False for each possible value) """
+            if token_Fs != None:
+                for v in [-1, 0, 1]:
+                    token_feats.append(token_Fs[ii] == v)
+
+            """ Add J as binary feature (True or False for each possible value) """
+            if token_Js != None:
+                for v in [-1, 0, 1]:
+                    token_feats.append(token_Js[ii] == v)
+
+            """ Add whether token is first token as feature (may be useful for case where f = j = -1) """
+            token_feats.append(token_nums[ii] == 0)
+
+            """ Add whether token is second token as feature (may be useful for case where f = j = -1) """
+            token_feats.append(token_nums[ii] == 1)
 
 ######################################################################################################
 
@@ -125,7 +194,7 @@ class Encoder(object):
             tags[bi:ei+1] = self.chunker.chunk_to_tags(chunk, tag);
         return tags;
 
-    def get_feats_targets(self, tokens, mentions, token_As=None, token_Bs=None, token_Gs=None):
+    def get_feats_targets(self, tokens, mentions, token_nums, token_As=None, token_Bs=None, token_Gs=None, token_Fs=None, token_Js=None, A_vals=None, B_vals=None, G_vals=None):
         """Return features/tag sequence to train against.
 
         Inputs
@@ -145,7 +214,7 @@ class Encoder(object):
         targets : list of str
             Target label sequence.
         """
-        feats = self.get_feats(tokens, token_As, token_Bs, token_Gs);
+        feats = self.get_feats(tokens, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js, A_vals, B_vals, G_vals);
         targets = self.get_targets(tokens, mentions);
         return feats, targets;
 
@@ -208,7 +277,7 @@ class OrthographicEncoder(Encoder):
             else:
                 feats.append(None);
 
-        feats.extend(word_type(token));
+#        feats.extend(word_type(token));
 
         return feats;
 
