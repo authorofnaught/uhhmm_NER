@@ -74,8 +74,8 @@ def get_ABG_value_sets(ltfs, logger):
                 B_vals.update(token_Bs)
             if token_Gs != None:
                 G_vals.update(token_Gs)
-        except:
-            logger.warn('ABG values not found for %s. Skipping.' % ltf);
+        except Exception as e:
+            logger.warn('ABG values not found for %s. Skipping with exception %s' % (ltf, e) );
             continue;
 
     return A_vals, B_vals, G_vals

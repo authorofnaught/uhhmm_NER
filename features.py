@@ -73,10 +73,10 @@ class Encoder(object):
             token_feats = []
 
             """ Add prefix, suffix feats """
-#            token_feats = self.get_feats_for_token(token)
+            token_feats.extend( self.get_feats_for_token(token) )
 
             """ Add word feats """
-#            token_feats.extend(word_type(token))
+            token_feats.extend( word_type(token) )
 
             """ Add A-B-G triple as non-binary feature """
 #            if token_As != None and token_Bs != None and token_Gs != None:
@@ -138,14 +138,14 @@ class Encoder(object):
                     token_feats.append(token_Gs[ii] == v)
 
             """ Add F as binary feature (True or False for each possible value) """
-            if token_Fs != None:
-                for v in [-1, 0, 1]:
-                    token_feats.append(token_Fs[ii] == v)
+#             if token_Fs != None:
+#                 for v in [-1, 0, 1]:
+#                     token_feats.append(token_Fs[ii] == v)
 
             """ Add J as binary feature (True or False for each possible value) """
-            if token_Js != None:
-                for v in [-1, 0, 1]:
-                    token_feats.append(token_Js[ii] == v)
+#             if token_Js != None:
+#                 for v in [-1, 0, 1]:
+#                     token_feats.append(token_Js[ii] == v)
 
             """ Add whether token is first token as feature (may be useful for case where f = j = -1) """
             token_feats.append(token_nums[ii] == 0)
@@ -153,17 +153,16 @@ class Encoder(object):
             """ Add whether token is second token as feature (may be useful for case where f = j = -1) """
             token_feats.append(token_nums[ii] == 1)
 
-######################################################################################################
-
             feats.append(token_feats)
+
         feats = zip(*feats);
         new_feats = [];
         for ii, feats_ in enumerate(feats):
-            for pos in xrange(-self.n_left, self.n_right+1):
+            for pos in range(-self.n_left, self.n_right+1):
                 feat_id = 'F%d[%d]' % (ii, pos);
                 k = -pos;
                 new_feats.append(['%s=%s' % (feat_id, val) if val is not None else val for val in roll(feats_, k)]);
-        new_feats = zip(*new_feats);
+        new_feats = list(zip(*new_feats))
 
         # Filter out None vals in rows where they occur.
         for ii, row in enumerate(new_feats):

@@ -15,7 +15,7 @@ def main(args):
         exit(1)
 
     lang=args[0]
-    working_dir=os.path.join("/Users/authorofnaught/Projects/LORELEI/NER/WORKING/", os.path.basename(args[1]))
+    working_dir=os.path.join("/Users/tmill/Projects/LORELEI/NER/WORKING/", os.path.basename(args[1]))
     if not os.path.exists(working_dir):
         os.mkdir(working_dir)
     
@@ -26,10 +26,10 @@ def main(args):
     temp_dir = tempfile.mkdtemp()
 
     """These directories and files are not updated"""
-    GAZ_LAF_DIR="/Users/authorofnaught/Projects/LORELEI/NER/REF-LAF/"+lang+"/" # directory containing gold standard LAF files
-    #REF_LAF_DIR="/Users/authorofnaught/Projects/LORELEI/NER/REF-LAF/"+lang+"/" # directory containing gold standard LAF files
-    LTF_DIR_ABG="/Users/authorofnaught/Projects/LORELEI/NER/LTF-ABG/"+lang+"/" # directory containing LTF files with uhhmm features
-    TEST_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TEST-SCP/"+lang+"ALL.txt" # file with paths to LTF files for tagging, one per line
+    GAZ_LAF_DIR="/Users/tmill/Projects/LORELEI/NER/NI-LAF/"+lang+"/" # directory containing gold standard LAF files
+    #REF_LAF_DIR="/Users/tmill/Projects/LORELEI/NER/REF-LAF/"+lang+"/" # directory containing gold standard LAF files
+    LTF_DIR_ABG="/Users/tmill/Projects/LORELEI/NER/LTF-ABG/"+lang+"/" # directory containing LTF files with uhhmm features
+    TEST_SCP="/Users/tmill/Projects/LORELEI/NER/TEST-SCP/"+lang+"/ALL.txt" # file with paths to LTF files for tagging, one per line
 
 
     """These directories and files are updated with each iteration"""
@@ -39,9 +39,11 @@ def main(args):
     TRAIN_SCP=os.path.join(temp_dir, 'trainingfiles') # file with paths to LAF files for training, one per line
     updateTrainingScript(GAZ_LAF_DIR, TRAIN_SCP) # initialize TRAIN_SCP to contain paths to all gazetteer-generated LAFs
 
+        
     traincmd = ["./train.py", 
-                "--displayprogress", # Display crfsuite output of model iterations, if desired. 
-                "-t", 0.4,
+                "--display_progress", # Display crfsuite output of model iterations, if desired. 
+#                "-t", "0.4",
+#                "--max_iter", "5",
                 "-S", TRAIN_SCP, 
                 MODEL_DIR, 
                 LTF_DIR_ABG
@@ -51,18 +53,31 @@ def main(args):
                 "-L", SYS_LAF_DIR, 
                 MODEL_DIR
                 ]
-    scorecmd = ["./score.py", 
-                REF_LAF_DIR, 
-                SYS_LAF_DIR, 
-                LTF_DIR]
+#     scorecmd = ["./score.py", 
+#                 REF_LAF_DIR, 
+#                 SYS_LAF_DIR, 
+#                 LTF_DIR]
 
-    changeinNEs = True:
+    changeinNEs = True
 
     while changeinNEs:
+        if not os.path.exists(MODEL_DIR):
+            os.makedirs(MODEL_DIR)
+            
+        if not os.path.exists(SYS_LAF_DIR):
+            os.makedirs(SYS_LAF_DIR)
+            
+        logger.info("Starting training on documents in %s at iteration %d" % (TRAIN_SCP, iteration) )
         subprocess.call(traincmd)
+        logger.info("Starting tagging of documents in %s at iteration %d" % (TEST_SCP, iteration) )
         subprocess.call(tagcmd)
+        
+        temp_laf_dir = os.path.join(temp_dir, 'temp_laf_dir')
+        if not os.path.exists(temp_laf_dir):
+            os.mkdir(temp_laf_dir)
+            
         if iteration != 0:
-            SYS_LAF_DIR, changeinNEs = updateNEdirs(PREV_SYS_LAF_DIR, SYS_LAF_DIR)
+            SYS_LAF_DIR, changeinNEs = updateNEdirs(PREV_SYS_LAF_DIR, temp_laf_dir, SYS_LAF_DIR)
         iteration+=1
         PREV_SYS_LAF_DIR = SYS_LAF_DIR 
         MODEL_DIR = os.path.join(working_dir, str(iteration), 'model')
@@ -71,7 +86,7 @@ def main(args):
         # TODO: update threshold for each iteration
 
     print("Bootstrapping stopped after {} iterations".format(iteration))
-    subprocess.call(scorecmd)
+#    subprocess.call(scorecmd)
     shutil.rmtree(temp_dir)
 
 

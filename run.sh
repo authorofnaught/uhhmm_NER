@@ -219,23 +219,23 @@ REF_LAF_DIR="/Users/authorofnaught/Projects/LORELEI/NER/REF-LAF/${LANGUAGE}/" # 
 #echo "Precision: 0.0, Recall: 0.0, F1: 0.0"
 #
 # 
-echo
-echo
-echo "##### Try only ABGFJ features, each as a binary feature  #####"
-echo "WARNING: Make sure features.py has been configured to use these features and only these features!"
-echo "##### Data split into 302 Training files and 34 Testing files #####"
-echo "RUNNING train.py..."
-rm -fr $MODEL_A_B_G_F_J
-./train.py --display_progress -S $TRAIN_SCP $MODEL_A_B_G_F_J $LTF_DIR_ABG
-echo "RUNNING tagger.py..."
-rm -rf $SYS_LAF_DIR
-mkdir $SYS_LAF_DIR
-./tagger.py -S $TEST_ABG_SCP -L $SYS_LAF_DIR $MODEL_A_B_G_F_J
-echo "RUNNING score.py..."
-./score.py $REF_LAF_DIR $SYS_LAF_DIR $LTF_DIR_ABG
-echo
-echo "Score from previous run:"
-echo "Hits: ____, Miss: ____, FA: ____"
-echo "Precision: ____, Recall: ____, F1: ____"
+# echo
+# echo
+# echo "##### Try only ABGFJ features, each as a binary feature  #####"
+# echo "WARNING: Make sure features.py has been configured to use these features and only these features!"
+# echo "##### Data split into 302 Training files and 34 Testing files #####"
+# echo "RUNNING train.py..."
+# rm -fr $MODEL_A_B_G_F_J
+# ./train.py --display_progress -S $TRAIN_SCP $MODEL_A_B_G_F_J $LTF_DIR_ABG
+# echo "RUNNING tagger.py..."
+# rm -rf $SYS_LAF_DIR
+# mkdir $SYS_LAF_DIR
+# ./tagger.py -S $TEST_ABG_SCP -L $SYS_LAF_DIR $MODEL_A_B_G_F_J
+# echo "RUNNING score.py..."
+# ./score.py $REF_LAF_DIR $SYS_LAF_DIR $LTF_DIR_ABG
+# echo
+# echo "Score from previous run:"
+# echo "Hits: ____, Miss: ____, FA: ____"
+# echo "Precision: ____, Recall: ____, F1: ____"
 #
 # 

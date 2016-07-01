@@ -1,12 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.4
 import argparse;
-import cPickle;
+import pickle;
 import logging;
 import os;
+import os.path
 import shutil;
 import subprocess;
 import sys;
 import tempfile;
+import traceback
 
 from joblib.parallel import Parallel, delayed;
 
@@ -53,7 +55,8 @@ def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext, thresho
     """
 
     # Create working directory.                                              
-    temp_dir = tempfile.mkdtemp();
+#    temp_dir = tempfile.mkdtemp();
+    temp_dir = os.path.dirname(modelf)
 
     # Load LTF.
     ltf_doc = load_doc(ltf, LTFDocument, logger);
@@ -310,11 +313,13 @@ def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext, thresho
         laf = os.path.join(tagged_dir, bn.replace('.ltf.xml', tagged_ext));
         laf_doc = LAFDocument(mentions=mentions, lang=ltf_doc.lang, doc_id=doc_id);
         laf_doc.write_to_file(laf);
-    except:
-        logger.warn('Problem with %s. Skipping.' % ltf);
+    except Exception as e:
+        logger.warn('Problem with %s is %s. Skipping.' % (os.path.basename(ltf), e))
+        traceback.print_exc(file=sys.stdout)
+
 
     # Clean up.
-    shutil.rmtree(temp_dir);
+    #shutil.rmtree(temp_dir);
 
 
 ##########################
@@ -359,11 +364,12 @@ if __name__ == '__main__':
     chunker = BILOUChunkEncoder();
     aligner = Aligner();
     encf = os.path.join(args.model_dir, 'tagger.enc');
-    with open(encf, 'r') as f:
-        enc = cPickle.load(f);
+    with open(encf, 'rb') as f:
+        enc = pickle.load(f);
 
     # Get values of A, B, and G now to pass to each call of tag_file.
     A_vals, B_vals, G_vals = get_ABG_value_sets(args.ltfs, logger)
+    print("A_Vals=%s, B_vals=%s, G_vals=%s" % (A_vals, B_vals, G_vals) )
 
     # Perform tagging in parallel, dumping results to args.tagged_dir.
     n_jobs = min(len(args.ltfs), args.n_jobs);

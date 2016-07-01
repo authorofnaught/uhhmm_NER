@@ -1,9 +1,10 @@
 """Miscellaneous IO classes and functions.
 """
 import os;
-import StringIO;
+from io import StringIO;
 
-from lxml import etree;
+#from lxml import etree;
+import xml.etree.ElementTree as etree
 
 __all__ = ['load_doc', 'LTFDocument', 'LAFDocument', 'write_crfsuite_file'];
 
@@ -34,9 +35,9 @@ class Tree(object):
     """
     def __init__(self, tree):
         self.tree = tree;
-        self.xml_version = self.tree.docinfo.xml_version;
-        self.doc_type = self.tree.docinfo.doctype;
-        doc_elem = self.tree.find('//DOC');
+#        self.xml_version = self.tree.docinfo.xml_version;
+#        self.doc_type = self.tree.docinfo.doctype;
+        doc_elem = self.tree.find('.//DOC');
         self.doc_id = doc_elem.get('id');
         self.lang = doc_elem.get('lang');
         if self.lang is None:
@@ -50,7 +51,7 @@ class Tree(object):
         xmlf : str
             Output file for XML.
         """
-        self.tree.write(xmlf, encoding='utf-8', pretty_print=True,
+        self.tree.write(xmlf, encoding='utf-8',
                         xml_declaration=True);
 
 
@@ -91,7 +92,7 @@ class LTFDocument(Tree):
         segments : lxml.etree.ElementTree generator
             Generator for segments, each represented by an ElementTree.
         """
-        for segment in self.tree.xpath('//SEG'):
+        for segment in self.tree.findall('.//SEG'):
             yield segment;
 
     def tokenizedWithABG(self):
@@ -133,7 +134,7 @@ class LTFDocument(Tree):
         token_Js = [];
         for seg_ in self.segments():
             token_num = 0;
-            for token_ in seg_.xpath('.//TOKEN'):
+            for token_ in seg_.findall('.//TOKEN'):
                 tokens.append(token_.text);
                 token_ids.append(token_.get('id'));
                 token_onsets.append(token_.get('start_char'));
@@ -142,8 +143,8 @@ class LTFDocument(Tree):
                 token_As.append(token_.get('a'));
                 token_Bs.append(token_.get('b'));
                 token_Gs.append(token_.get('g'));
-                token_Fs.append(token_.get('f'));
-                token_Js.append(token_.get('j'));
+#                token_Fs.append(token_.get('f'));
+#                token_Js.append(token_.get('j'));
                 token_num+=1;
         tokens = [' ' if token is None else token for token in tokens];
         token_onsets = [token_onset if token_onset is None else int(token_onset) for token_onset in token_onsets];
@@ -152,8 +153,8 @@ class LTFDocument(Tree):
         token_As = [token_a if token_a is None else int(token_a) for token_a in token_As];
         token_Bs = [token_b if token_b is None else int(token_b) for token_b in token_Bs];
         token_Gs = [token_g if token_g is None else int(token_g) for token_g in token_Gs];
-        token_Fs = [token_f if token_f is None else int(token_f) for token_f in token_Fs];
-        token_Js = [token_j if token_j is None else int(token_j) for token_j in token_Js];
+#        token_Fs = [token_f if token_f is None else int(token_f) for token_f in token_Fs];
+#        token_Js = [token_j if token_j is None else int(token_j) for token_j in token_Js];
         return tokens, token_ids, token_onsets, token_offsets, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js;
 
     def tokenized(self):
@@ -181,7 +182,7 @@ class LTFDocument(Tree):
         token_nums = [];
         for seg_ in self.segments():
             token_num = 0;
-            for token_ in seg_.xpath('.//TOKEN'):
+            for token_ in seg_.findall('.//TOKEN'):
                 tokens.append(token_.text);
                 token_ids.append(token_.get('id'));
                 token_onsets.append(token_.get('start_char'));
@@ -196,7 +197,7 @@ class LTFDocument(Tree):
     def text(self):
         """Return original text of document.
         """
-        text = [elem.text for elem in self.tree.xpath('//ORIGINAL_TEXT')];
+        text = [elem.text for elem in self.tree.findall('.//ORIGINAL_TEXT')];
         text = u' '.join(text);
         return text;
 
@@ -249,7 +250,7 @@ class LAFDocument(Tree):
                        """;
 
             # Create and set attributes on root node.
-            tree = etree.parse(StringIO.StringIO(base_xml));
+            tree = etree.parse(StringIO(base_xml));
             root = tree.getroot();
             root.set('lang', lang);
 
@@ -288,16 +289,16 @@ class LAFDocument(Tree):
         and end_char the character offset (0-indexed) of the mention.
         """
         mentions = [];
-        for mention_ in self.tree.xpath('//ANNOTATION'):
+        for mention_ in self.tree.findall('.//ANNOTATION'):
             try:
                 entity_id = mention_.get('id');
 #                print('a')
                 try:
-                   tag = mention_.xpath('TAG')[0].text;
+                   tag = mention_.findall('TAG')[0].text;
                 except:
                    tag = mention_.get('type');
 #                print('b')
-                extent = mention_.xpath('EXTENT')[0];
+                extent = mention_.findall('EXTENT')[0];
 #                print('c')
                 start_char = int(extent.get('start_char'));
 #                print('d')
@@ -335,8 +336,8 @@ def load_doc(xmlf, cls, logger):
     try:
         assert(os.path.exists(xmlf));
         doc = cls(xmlf);
-    except:
-        logger.warn('Unable to open %s. Skipping.' % xmlf);
+    except Exception as e:
+        #logger.warn('Unable to open %s with exception %s. Skipping.' % (xmlf, e) );
         doc = None;
     return doc;
 
@@ -376,7 +377,7 @@ def write_crfsuite_file(fo, feats, targets=None):
             fields.append(targets[ii]);
         fields.extend(feats_);
         line = '%s\n' % ('\t'.join(fields));
-        fo.write(line.encode('utf-8'));
+        fo.write(line);
     fo.write('\n');
 
     # Clean up.

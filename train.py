@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.4
 import argparse;
-import cPickle;
+import pickle;
 import glob;
 import logging;
 import os;
@@ -8,8 +8,8 @@ import shutil;
 import subprocess;
 import sys;
 import tempfile;
-
-from joblib.parallel import Parallel, delayed;
+import traceback
+from joblib.parallel import Parallel, delayed
 
 from features import OrthographicEncoder;
 from io_ import load_doc, LTFDocument, LAFDocument, write_crfsuite_file;
@@ -43,7 +43,7 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
         CRFsuite training file.
     """
     with open(trainf, 'w') as f:
-
+        logger.info("Writing training file %s" % (trainf) )
         A_vals = set()
         B_vals = set()
         G_vals = set()
@@ -56,6 +56,7 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
             ltfs.append(ltf)
 
         A_vals, B_vals, G_vals = get_ABG_value_sets(ltfs, logger)
+        print("A_Vals=%s, B_vals=%s, G_vals=%s" % (A_vals, B_vals, G_vals) )
 
 
 #            laf_doc = load_doc(laf, LAFDocument, logger);
@@ -113,7 +114,7 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
                     mention_onsets, mention_offsets = convert_extents(char_onsets, char_offsets,
                                                                       token_onsets, token_offsets);
                     mentions_ = list(zip(tags, mention_onsets, mention_offsets));
-
+                    
                 # Eliminate overlapping mentions, retaining whichever
                 # is first when sorted in ascending order by (onset, offset).
                 sort_mentions(mentions_);
@@ -127,8 +128,9 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
 
                 feats, targets = enc.get_feats_targets(tokens, mentions_, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js, A_vals, B_vals, G_vals);
 
-            except:
-                logger.warn('Feature extraction failed for %s. Skipping.' % laf);
+            except Exception as e:
+                logger.warn('Feature extraction failed for %s with exception %s with info %s. Skipping.' % (laf, e, sys.exc_info()[0]) );
+                traceback.print_exc(file=sys.stdout)
                 continue;
 
             # Write to file.
@@ -194,11 +196,11 @@ if __name__ == '__main__':
             args.lafs = [l.strip() for l in f.readlines()];
 
     # Exit with error if model directory already exists.
-    if not os.path.exists(args.model_dir):
-        os.makedirs(args.model_dir);
-    else:
-        logger.error('Model directory already exists. Exiting.');
-        sys.exit(1);
+#    if not os.path.exists(args.model_dir):
+#        os.makedirs(args.model_dir);
+#    else:
+#        logger.error('Model directory %s already exists. Exiting.' % args.model_dir);
+#        sys.exit(1);
 
     # Create working directory.
     temp_dir = tempfile.mkdtemp();
@@ -207,8 +209,8 @@ if __name__ == '__main__':
     enc = OrthographicEncoder(args.n_left, args.n_right,
                               args.max_prefix_len, args.max_suffix_len);
     encf = os.path.join(args.model_dir, 'tagger.enc');
-    with open(encf, 'w') as f:
-        cPickle.dump(enc, f, protocol=2);
+    with open(encf, 'wb') as f:
+        pickle.dump(enc, f);
 
     # Train.
     trainf = os.path.join(temp_dir, 'train.txt')

@@ -68,12 +68,12 @@ class BILOUChunkEncoder(ChunkEncoder):
         n_tokens = len(chunk);
         tags = [];
         if outside:
-            tags = ['O' for ii in xrange(n_tokens)];
+            tags = ['O' for ii in range(n_tokens)];
         elif n_tokens == 1:
             tags.append('U');
         else:
             tags = ['B'];
-            for ii in xrange(n_tokens-2):
+            for ii in range(n_tokens-2):
                 tags.append('I');
             tags.append('L');
         tags = ['%s_%s' % (tag, label) for tag in tags];
