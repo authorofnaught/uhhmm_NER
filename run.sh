@@ -15,48 +15,61 @@ if [ $# -ne 1 ]; then
   exit 1
 fi
 
+WORKING_DIR=`pwd`
+
+echo "All paths are relative to ${WORKING_DIR}"
+
 LANGUAGE=$1
 
-#MODEL_DIR="/Users/authorofnaught/Projects/LORELEI/NER/hausa_ne_model/" # Hausa model included with LRLP, do not use with train.py
-MODEL_SPLIT_WORDFEATS="/Users/authorofnaught/Projects/LORELEI/NER/MODEL-DIR/${LANGUAGE}_SPLIT_wordfeats/"
-MODEL_SPLIT_WORDFEATS_A_B_G="/Users/authorofnaught/Projects/LORELEI/NER/MODEL-DIR/${LANGUAGE}_SPLIT_wordfeats_A_B_G/"
-MODEL_SPLIT_WORDFEATS_G="/Users/authorofnaught/Projects/LORELEI/NER/MODEL-DIR/${LANGUAGE}_SPLIT_wordfeats_G/"
-MODEL_SPLIT_A_B_G="/Users/authorofnaught/Projects/LORELEI/NER/MODEL-DIR/${LANGUAGE}_SPLIT_A_B_G/"
-MODEL_ALL_WORDFEATS="/Users/authorofnaught/Projects/LORELEI/NER/MODEL-DIR/${LANGUAGE}_ALL_wordfeats/" # directory for trained model
-MODEL_ALL_WORDFEATS_A_B_G="/Users/authorofnaught/Projects/LORELEI/NER/MODEL-DIR/${LANGUAGE}_ALL_wordfeats_A_B_G/"
-MODEL_ALL_WORDFEATS_G="/Users/authorofnaught/Projects/LORELEI/NER/MODEL-DIR/${LANGUAGE}_ALL_wordfeats_G/"
-MODEL_ALL_A_B_G="/Users/authorofnaught/Projects/LORELEI/NER/MODEL-DIR/${LANGUAGE}_ALL_A_B_G/"
-MODEL_RANDOM_A_B_G_F_J="/Users/authorofnaught/Projects/LORELEI/NER/MODEL-DIR/${LANGUAGE}_random_A_B_G_F_J/"
-MODEL_A_B_G_F_J="/Users/authorofnaught/Projects/LORELEI/NER/MODEL-DIR/${LANGUAGE}_A_B_G_F_J/"
-LTF_DIR="/Users/authorofnaught/Projects/LORELEI/NER/LTF-DIR/${LANGUAGE}/" # directory containing original LRLP LTF files
-LTF_DIR_ABG="/Users/authorofnaught/Projects/LORELEI/NER/LTF-ABG/${LANGUAGE}/" # directory containing LTF files with uhhmm features
-SYS_LAF_DIR="/Users/authorofnaught/Projects/LORELEI/NER/SYS-LAF/${LANGUAGE}/" # directory for tagger output (LAF files)
-TRAIN_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TRAIN-SCP/${LANGUAGE}.txt" # script file containing paths to LAF files (one per line)
-TRAIN_ALL_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TRAIN-SCP/${LANGUAGE}ALL.txt" # same, but with all files listed if training and testing on same data
-TEST_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TEST-SCP/${LANGUAGE}.txt" # script file containing paths to LTF files (one per line)
-TEST_ABG_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TEST-SCP/${LANGUAGE}ABG.txt"
-TEST_ALL_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TEST-SCP/${LANGUAGE}ALL.txt" # same, but with all files listed if training and testing on same data
-TEST_ALLABG_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TEST-SCP/${LANGUAGE}ALLABG.txt" # same, but with all files listed if training and testing on same data
-REF_LAF_DIR="/Users/authorofnaught/Projects/LORELEI/NER/REF-LAF/${LANGUAGE}/" # directory containing gold standard LAF files
+#MODEL_DIR="${WORKING_DIR}/NER/hausa_ne_model/" # Hausa model included with LRLP, do not use with train.py
+MODEL_SPLIT_WORDFEATS="${WORKING_DIR}/NER/MODEL-DIR/${LANGUAGE}_SPLIT_wordfeats/"
+MODEL_SPLIT_WORDFEATS_A_B_G="${WORKING_DIR}/NER/MODEL-DIR/${LANGUAGE}_SPLIT_wordfeats_A_B_G/"
+MODEL_SPLIT_WORDFEATS_G="${WORKING_DIR}/NER/MODEL-DIR/${LANGUAGE}_SPLIT_wordfeats_G/"
+MODEL_SPLIT_A_B_G="${WORKING_DIR}/NER/MODEL-DIR/${LANGUAGE}_SPLIT_A_B_G/"
+MODEL_ALL_WORDFEATS="${WORKING_DIR}/NER/MODEL-DIR/${LANGUAGE}_ALL_wordfeats/" # directory for trained model
+MODEL_ALL_WORDFEATS_A_B_G="${WORKING_DIR}/NER/MODEL-DIR/${LANGUAGE}_ALL_wordfeats_A_B_G/"
+MODEL_ALL_WORDFEATS_G="${WORKING_DIR}/NER/MODEL-DIR/${LANGUAGE}_ALL_wordfeats_G/"
+MODEL_ALL_A_B_G="${WORKING_DIR}/NER/MODEL-DIR/${LANGUAGE}_ALL_A_B_G/"
+MODEL_RANDOM_A_B_G_F_J="${WORKING_DIR}/NER/MODEL-DIR/${LANGUAGE}_random_A_B_G_F_J/"
+MODEL_A_B_G_F_J="${WORKING_DIR}/NER/MODEL-DIR/${LANGUAGE}_A_B_G_F_J/"
 
-#echo
-#echo
-#echo "##### Use only prefix, suffix, word features (two word window) ABG features #####"
-#echo "WARNING: Make sure features.py has been configured to use these features and only these features!"
-#echo "##### Data split into 302 Training files and 34 Testing files #####"
-#echo "RUNNING train.py..."
-#rm -rf $MODEL_SPLIT_WORDFEATS
-#./train.py --display_progress -S $TRAIN_SCP $MODEL_SPLIT_WORDFEATS $LTF_DIR
-#echo "RUNNING tagger.py..."
-#rm -rf $SYS_LAF_DIR
-#mkdir $SYS_LAF_DIR
-#./tagger.py -S $TEST_SCP -L $SYS_LAF_DIR $MODEL_SPLIT_WORDFEATS
-#echo "RUNNING score.py..."
-#./score.py $REF_LAF_DIR $SYS_LAF_DIR $LTF_DIR
-#echo
-#echo "Score from previous run:"
-#echo "Hits: 276, Miss: 467, FA: 214"
-#echo "Precision: 0.563265, Recall: 0.371467, F1: 0.447689" 
+## Data directories
+LTF_DIR="${WORKING_DIR}/NER/LTF-DIR/${LANGUAGE}/" # directory containing original LRLP LTF files
+LTF_DIR_ABG="${WORKING_DIR}/NER/LTF-ABG/${LANGUAGE}/" # directory containing LTF files with uhhmm features
+REF_LAF_DIR="${WORKING_DIR}/NER/REF-LAF/${LANGUAGE}/" # directory containing gold standard LAF files
+
+## Working directory for tagger
+SYS_LAF_DIR="${WORKING_DIR}/NER/SYS-LAF/${LANGUAGE}/" # directory for tagger output (LAF files)
+
+## train/test splits
+TRAIN_SCP="${WORKING_DIR}/NER/TRAIN-SCP/${LANGUAGE}.txt" # script file containing paths to LAF files (one per line)
+TEST_SCP="${WORKING_DIR}/NER/TEST-SCP/${LANGUAGE}.txt" # script file containing paths to LTF files (one per line)
+TEST_ABG_SCP="${WORKING_DIR}/NER/TEST-SCP/${LANGUAGE}ABG.txt"
+
+## These are only necessary for the train on test condition (debugging)
+TRAIN_ALL_SCP="${WORKING_DIR}/NER/TRAIN-SCP/${LANGUAGE}ALL.txt" # same, but with all files listed if training and testing on same data
+TEST_ALL_SCP="${WORKING_DIR}/NER/TEST-SCP/${LANGUAGE}ALL.txt" # same, but with all files listed if training and testing on same data
+TEST_ALLABG_SCP="${WORKING_DIR}/NER/TEST-SCP/${LANGUAGE}ALLABG.txt" # same, but with all files listed if training and testing on same data
+
+echo
+echo
+echo "##### Use only prefix, suffix, word features (two word window) ABG features #####"
+echo "WARNING: Make sure features.py has been configured to use these features and only these features!"
+echo "##### Data split into 302 Training files and 34 Testing files #####"
+echo "RUNNING train.py..."
+rm -rf $MODEL_SPLIT_WORDFEATS
+mkdir -p $MODEL_SPLIT_WORDFEATS
+./train.py --display_progress -S $TRAIN_SCP $MODEL_SPLIT_WORDFEATS $LTF_DIR
+echo "RUNNING tagger.py..."
+rm -rf $SYS_LAF_DIR
+mkdir $SYS_LAF_DIR
+./tagger.py -S $TEST_SCP -L $SYS_LAF_DIR $MODEL_SPLIT_WORDFEATS
+echo "RUNNING score.py..."
+./score.py $REF_LAF_DIR $SYS_LAF_DIR $LTF_DIR
+echo
+echo "Score from previous run:"
+echo "Hits: 276, Miss: 467, FA: 214"
+echo "Precision: 0.563265, Recall: 0.371467, F1: 0.447689" 
 #
 #
 #echo
