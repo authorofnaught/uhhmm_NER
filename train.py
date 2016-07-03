@@ -14,7 +14,7 @@ from joblib.parallel import Parallel, delayed
 from features import OrthographicEncoder;
 from io_ import load_doc, LTFDocument, LAFDocument, write_crfsuite_file;
 from logger import configure_logger;
-from util import convert_extents, sort_mentions, get_ABG_value_sets;
+from util import convert_extents, convert_indices, sort_mentions, get_ABG_value_sets;
 
 logger = logging.getLogger();
 configure_logger(logger);
@@ -90,7 +90,10 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
             ltf = os.path.join(ltf_dir, bn.replace('.laf.xml', '.ltf.xml'));
             laf_doc = load_doc(laf, LAFDocument, logger);
             ltf_doc = load_doc(ltf, LTFDocument, logger);
+            #print("Writing features for ltf file %s with label file %s" % (ltf, laf))
+            
             if laf_doc is None or ltf_doc is None:
+                print("File not found")
                 continue;
             
             # Extract features/targets.
@@ -110,9 +113,13 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
                 else:
                     # Map to the minimal enclosing span of tokens in the
                     # supplied LTF.
-                    entity_ids, tags, extents, char_onsets, char_offsets = zip(*mentions);
-                    mention_onsets, mention_offsets = convert_extents(char_onsets, char_offsets,
-                                                                      token_onsets, token_offsets);
+                    entity_ids, tags, extents, char_onsets, char_offsets, entity_token_onsets, entity_token_offsets = zip(*mentions);
+                    if token_onsets[0] != None:
+                        mention_onsets, mention_offsets = convert_extents(char_onsets, char_offsets,
+                                                                      token_onsets, token_offsets)
+                    else:
+                        mention_onsets, mention_offsets = convert_indices(token_ids, entity_token_onsets, entity_token_offsets)
+                        
                     mentions_ = list(zip(tags, mention_onsets, mention_offsets));
                     
                 # Eliminate overlapping mentions, retaining whichever

@@ -29,6 +29,29 @@ def convert_extents(char_onsets, char_offsets, token_onsets, token_offsets):
     mention_token_offsets = [bisect_left(token_offsets, char_offset) for char_offset in char_offsets];
     return mention_token_onsets, mention_token_offsets;
 
+def convert_indices(token_ids, entity_token_onsets, entity_token_offsets):
+    onsets = []
+    offsets = []
+    ind = 0
+    
+    for token_ind,token_id in enumerate(token_ids):
+        if len(onsets) == len(offsets):
+            ## Look for start of entity
+            if entity_token_onsets[ind] == token_id:
+                onsets.append(token_ind)
+        
+        ## don't do an else -- even if we just created the start we could see an end on the 
+        ## same token. Need to check length again.
+        if len(onsets) != len(offsets):
+            ## we've started an entity but haven't finished it: look for the end.
+            if entity_token_offsets[ind] == token_id:
+                offsets.append(token_ind)
+                ind += 1    
+        
+        if ind >= len(entity_token_onsets):
+            break
+            
+    return onsets, offsets
 
 def sort_mentions(mentions):
     """Sort mentions in place in ascending order of token_onset, then
@@ -58,6 +81,7 @@ def get_ABG_value_sets(ltfs, logger):
         # Check that the LTF is valid.
         ltf_doc = load_doc(ltf, LTFDocument, logger);
         if ltf_doc is None:
+            print("Document %s is None!" % ltf)
             continue;
         
         # Extract features/targets.
@@ -65,7 +89,8 @@ def get_ABG_value_sets(ltfs, logger):
             # Extract tokens.
             try:
                 tokens, token_ids, token_onsets, token_offsets, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js = ltf_doc.tokenizedWithABG();
-            except:
+            except Exception as e:
+                print("Exception (%s) thrown trying to extract ABG -- resorting to normal tokenization" % e)
                 tokens, token_ids, token_onsets, token_offsets, token_nums = ltf_doc.tokenized();
                 token_As = token_Bs = token_Gs = None;
             if token_As != None:

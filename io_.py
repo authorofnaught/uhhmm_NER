@@ -132,6 +132,9 @@ class LTFDocument(Tree):
         token_Gs = [];
         token_Fs = [];
         token_Js = [];
+        def strip_brackets(in_str):
+            return in_str.replace('[', '').replace(']', '')
+            
         for seg_ in self.segments():
             token_num = 0;
             for token_ in seg_.findall('.//TOKEN'):
@@ -140,9 +143,24 @@ class LTFDocument(Tree):
                 token_onsets.append(token_.get('start_char'));
                 token_offsets.append(token_.get('end_char'));
                 token_nums.append(token_num);
-                token_As.append(token_.get('a'));
-                token_Bs.append(token_.get('b'));
-                token_Gs.append(token_.get('g'));
+                tokena = token_.get('a')
+                tokenb = token_.get('b')
+                tokeng = token_.get('g')
+                if tokena != None:
+                    token_As.append(strip_brackets(tokena));
+                else:
+                    token_As.append(-1)
+                
+                if tokenb != None:
+                    token_Bs.append(strip_brackets(tokenb));
+                else:
+                    token_Bs.append(-1)
+                
+                if tokeng != None:
+                    token_Gs.append(token_.get('g'));
+                else:
+                    token_Gs.append(-1)
+                    
 #                token_Fs.append(token_.get('f'));
 #                token_Js.append(token_.get('j'));
                 token_num+=1;
@@ -300,19 +318,34 @@ class LAFDocument(Tree):
 #                print('b')
                 extent = mention_.findall('EXTENT')[0];
 #                print('c')
-                start_char = int(extent.get('start_char'));
-#                print('d')
-                end_char = int(extent.get('end_char'));
-#                print('e')
-
+                try:
+                    start_char = int(extent.get('start_char'));
+    #                print('d')
+                    end_char = int(extent.get('end_char'));
+    #                print('e')
+                except:
+                    start_char = -1
+                    end_char = -1
+                
+                
+                try:
+                    start_token = mention_.get('start_token')
+                    end_token = mention_.get('end_token')
+                except:
+                    start_token = None
+                    end_token = None                
+                
+                
                 mention = [entity_id,
                            tag,
                            extent,
                            start_char,
-                           end_char];
+                           end_char,
+                           start_token,
+                           end_token];
                 mentions.append(mention);
-            except:
-                pass
+            except Exception as e:
+                logger.warn("Error reading annotations in %s" % (e) )
 
         return mentions;
 
