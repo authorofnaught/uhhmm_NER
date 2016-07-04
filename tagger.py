@@ -1,4 +1,3 @@
-#!/usr/bin/env python3.4
 import argparse;
 import pickle;
 import logging;
@@ -25,7 +24,7 @@ logger = logging.getLogger();
 configure_logger(logger);
 
 
-def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext, threshold, A_vals, B_vals, G_vals):
+def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext, threshold, A_vals, B_vals, G_vals, F_vals, J_vals):
     """Extract features for tokenization in LTF file and tag named entities.
 
     Inputs
@@ -78,7 +77,7 @@ def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext, thresho
         # Extract features
         featsf = os.path.join(temp_dir, 'feats.txt');
 #        feats = enc.get_feats(tokens, token_As, token_Bs, token_Gs);
-        feats = enc.get_feats(tokens, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js, A_vals, B_vals, G_vals);
+        feats = enc.get_feats(tokens, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js, A_vals, B_vals, G_vals, F_vals, J_vals);
         write_crfsuite_file(featsf, feats);
 
         shutil.copy(featsf, "featuresfile") #DEBUG
@@ -368,8 +367,8 @@ if __name__ == '__main__':
         enc = pickle.load(f);
 
     # Get values of A, B, and G now to pass to each call of tag_file.
-    A_vals, B_vals, G_vals = get_ABG_value_sets(args.ltfs, logger)
-    print("A_Vals=%s, B_vals=%s, G_vals=%s" % (A_vals, B_vals, G_vals) )
+    A_vals, B_vals, G_vals, F_vals, J_vals = get_ABG_value_sets(args.ltfs, logger)
+    print("A_vals=%s, B_vals=%s, G_vals=%s F_vals=%s J_vals=%s" % (A_vals, B_vals, G_vals, F_vals, J_vals) )
 
     # Perform tagging in parallel, dumping results to args.tagged_dir.
     n_jobs = min(len(args.ltfs), args.n_jobs);
@@ -380,4 +379,4 @@ if __name__ == '__main__':
                                          args.tagged_dir,
                                          args.ext, 
                                          args.threshold,
-                                         A_vals, B_vals, G_vals) for ltf in args.ltfs);
+                                         A_vals, B_vals, G_vals, F_vals, J_vals) for ltf in args.ltfs);

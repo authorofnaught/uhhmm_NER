@@ -1,4 +1,3 @@
-#!/usr/bin/env python3.4
 import argparse;
 import pickle;
 import glob;
@@ -55,8 +54,8 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
             ltf = os.path.join(ltf_dir, bn.replace('.laf.xml', '.ltf.xml'));
             ltfs.append(ltf)
 
-        A_vals, B_vals, G_vals = get_ABG_value_sets(ltfs, logger)
-        print("A_Vals=%s, B_vals=%s, G_vals=%s" % (A_vals, B_vals, G_vals) )
+        A_vals, B_vals, G_vals, F_vals, J_vals = get_ABG_value_sets(ltfs, logger)
+        print("A_Vals=%s, B_vals=%s, G_vals=%s F_vals=%s J_vals=%s" % (A_vals, B_vals, G_vals, F_vals, J_vals) )
 
 
 #            laf_doc = load_doc(laf, LAFDocument, logger);
@@ -82,7 +81,7 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
 #                logger.warn('ABG values not found for %s. Skipping.' % laf);
 #                continue;
 
-        print("Found the following number of values for ABG:\nA: {}\nB: {}\nG: {}\n".format(len(A_vals), len(B_vals), len(G_vals)))
+        print("Found the following number of values for ABG:\nA: {}\nB: {}\nG: {}\nF: {}\nJ: {}\n".format(len(A_vals), len(B_vals), len(G_vals), len(F_vals), len(J_vals)))
 
         for laf in lafs:
             # Check that the LTF and LAF are valid.
@@ -133,7 +132,7 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
                     prev_mention_offset = mention_offset;
                 mentions_ = temp_mentions_;
 
-                feats, targets = enc.get_feats_targets(tokens, mentions_, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js, A_vals, B_vals, G_vals);
+                feats, targets = enc.get_feats_targets(tokens, mentions_, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js, A_vals, B_vals, G_vals, F_vals, J_vals);
 
             except Exception as e:
                 logger.warn('Feature extraction failed for %s with exception %s with info %s. Skipping.' % (laf, e, sys.exc_info()[0]) );
@@ -261,7 +260,7 @@ if __name__ == '__main__':
                '-a', 'lbfgs', # Train with gradient descent using L-BFGS method
                '-p', 'c1=1.0',
                '-p', 'c2=1.0',
-               #'-p', 'max_iterations=%d' % args.max_iter,
+               '-p', 'max_iterations=%d' % args.max_iter,
                #'-p', 'num_memories=6',
                #'-p', 'epsilon=%f' % args.epsilon,
                #'-p', 'stop=10',

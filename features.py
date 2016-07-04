@@ -48,7 +48,7 @@ class Encoder(object):
         """
         raise NotImplementedError;
 
-    def get_feats(self, tokens, token_nums, token_As=None, token_Bs=None, token_Gs=None, token_Fs=None, token_Js=None, A_vals=None, B_vals=None, G_vals=None):
+    def get_feats(self, tokens, token_nums, token_As=None, token_Bs=None, token_Gs=None, token_Fs=None, token_Js=None, A_vals=None, B_vals=None, G_vals=None, F_vals=None, J_vals=None):
         """Return features corresponding to token sequence.
 
         Inputs
@@ -138,14 +138,14 @@ class Encoder(object):
                     token_feats.append(token_Gs[ii] == v)
 
             """ Add F as binary feature (True or False for each possible value) """
-#             if token_Fs != None:
-#                 for v in [-1, 0, 1]:
-#                     token_feats.append(token_Fs[ii] == v)
+            if token_Fs != None and F_vals != None:
+                for v in F_vals:
+                    token_feats.append(token_Fs[ii] == v)
 
             """ Add J as binary feature (True or False for each possible value) """
-#             if token_Js != None:
-#                 for v in [-1, 0, 1]:
-#                     token_feats.append(token_Js[ii] == v)
+            if token_Js != None and J_vals != None:
+                for v in J_vals:
+                    token_feats.append(token_Js[ii] == v)
 
             """ Add whether token is first token as feature (may be useful for case where f = j = -1) """
             token_feats.append(token_nums[ii] == 0)
@@ -193,7 +193,7 @@ class Encoder(object):
             tags[bi:ei+1] = self.chunker.chunk_to_tags(chunk, tag);
         return tags;
 
-    def get_feats_targets(self, tokens, mentions, token_nums, token_As=None, token_Bs=None, token_Gs=None, token_Fs=None, token_Js=None, A_vals=None, B_vals=None, G_vals=None):
+    def get_feats_targets(self, tokens, mentions, token_nums, token_As=None, token_Bs=None, token_Gs=None, token_Fs=None, token_Js=None, A_vals=None, B_vals=None, G_vals=None, F_vals=None, J_vals=None):
         """Return features/tag sequence to train against.
 
         Inputs
@@ -213,7 +213,7 @@ class Encoder(object):
         targets : list of str
             Target label sequence.
         """
-        feats = self.get_feats(tokens, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js, A_vals, B_vals, G_vals);
+        feats = self.get_feats(tokens, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js, A_vals, B_vals, G_vals, F_vals, J_vals);
         targets = self.get_targets(tokens, mentions);
         return feats, targets;
 

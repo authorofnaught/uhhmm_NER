@@ -76,6 +76,8 @@ def get_ABG_value_sets(ltfs, logger):
     A_vals = set()
     B_vals = set()
     G_vals = set()
+    F_vals = set()
+    J_vals = set()
 
     for ltf in ltfs:
         # Check that the LTF is valid.
@@ -99,8 +101,13 @@ def get_ABG_value_sets(ltfs, logger):
                 B_vals.update(token_Bs)
             if token_Gs != None:
                 G_vals.update(token_Gs)
+            if token_Fs != None:
+                F_vals.update(token_Fs)
+            if token_Js != None:
+                J_vals.update(token_Js)
+
         except Exception as e:
             logger.warn('ABG values not found for %s. Skipping with exception %s' % (ltf, e) );
             continue;
 
-    return A_vals, B_vals, G_vals
+    return A_vals, B_vals, G_vals, F_vals, J_vals

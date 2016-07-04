@@ -1,3 +1,4 @@
+#!/usr/local/bin/python3
 import os
 import shutil
 import tempfile
@@ -6,88 +7,99 @@ import subprocess
 import logging
 from logger import configure_logger
 from io_ import load_doc, LAFDocument
+import argparse
 
 
+def bootstrappedNER(lang, working_dir_name, 
+                    threshold_start_val, threshold_decrement, threshold_min, 
+                    max_iterations=sys.maxsize):
 
-def main(args):
-    if len(args) != 4:
-        print("Usage: "+sys.argv[0]+" [language] [working directory] [threshold value] [threshold change step value]")
-        exit(1)
+    print("Starting bootstrapped NER with the following parameters:\n"
+            "threshold={}\n"
+            "decrement={}\n"
+            "min_threshold={}".format(threshold_start_val, threshold_decrement, threshold_min))
 
-    lang=args[0]
-    working_dir=os.path.join("/Users/tmill/Projects/LORELEI/NER/WORKING/", os.path.basename(args[1]))
-    if not os.path.exists(working_dir):
-        os.mkdir(working_dir)
-    
-    threshold = args[2]
-    threshold_step = args[3]
     logger = logging.getLogger()
     configure_logger(logger)
-    temp_dir = tempfile.mkdtemp()
+    working_dir=os.path.join("/Users/authorofnaught/Projects/LORELEI/NER/WORKING/", os.path.basename(working_dir_name))
+    if not os.path.exists(working_dir):
+        os.mkdir(working_dir)
 
     """These directories and files are not updated"""
-    GAZ_LAF_DIR="/Users/tmill/Projects/LORELEI/NER/NI-LAF/"+lang+"/" # directory containing gold standard LAF files
-    #REF_LAF_DIR="/Users/tmill/Projects/LORELEI/NER/REF-LAF/"+lang+"/" # directory containing gold standard LAF files
-    LTF_DIR_ABG="/Users/tmill/Projects/LORELEI/NER/LTF-ABG/"+lang+"/" # directory containing LTF files with uhhmm features
-    TEST_SCP="/Users/tmill/Projects/LORELEI/NER/TEST-SCP/"+lang+"/ALL.txt" # file with paths to LTF files for tagging, one per line
+    REF_LAF_DIR="/Users/authorofnaught/Projects/LORELEI/NER/REF-LAF/"+lang+"335/" # directory containing gold standard LAF files
+    LTF_DIR="/Users/authorofnaught/Projects/LORELEI/NER/LTF-ABG/"+lang+"/" # directory containing LTF files with uhhmm features
+    TEST_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TEST-SCP/"+lang+"335.txt" # file with paths to LTF files for tagging, one per line
 
 
-    """These directories and files are updated with each iteration"""
-    iteration = 0
+    """These values, directories, and files are updated with each iteration"""
+    PREV_SYS_LAF_DIR=REF_LAF_DIR # stores location of previous iteration's output
+    threshold = threshold_start_val # prob threshold above which NEs are retained, below which rejected
+    iteration = 0 # number of bootstrapping iteration
+    TRAIN_SCP=os.path.join(working_dir, str(iteration), 'training.list.txt') # file with paths to LAF files for training, one per line
     MODEL_DIR=os.path.join(working_dir, str(iteration), 'model') # directory for trained model
-    SYS_LAF_DIR=os.path.join(working_dir, str(iteration), 'sys_laf') # directory for tagger output (LAF files)
-    TRAIN_SCP=os.path.join(temp_dir, 'trainingfiles') # file with paths to LAF files for training, one per line
-    updateTrainingScript(GAZ_LAF_DIR, TRAIN_SCP) # initialize TRAIN_SCP to contain paths to all gazetteer-generated LAFs
+    NEW_NE_DIR=os.path.join(working_dir, str(iteration), 'newNEs') # directory for NEs found in a single iteration
+    SYS_LAF_DIR=os.path.join(working_dir, str(iteration), 'output') # directory for tagger output (LAF files)
+    updateTrainingScript(REF_LAF_DIR, TRAIN_SCP) # initialize TRAIN_SCP to contain paths to all gazetteer-generated LAFs
 
         
-    traincmd = ["./train.py", 
+    traincmd = ["python3",
+                "./train.py", 
                 "--display_progress", # Display crfsuite output of model iterations, if desired. 
-#                "-t", "0.4",
-#                "--max_iter", "5",
+                "--max_iter", "5",
                 "-S", TRAIN_SCP, 
                 MODEL_DIR, 
-                LTF_DIR_ABG
-                ]
-    tagcmd = ["./tagger.py", 
+                LTF_DIR
+               ]
+    tagcmd   = ["python3",
+                "./tagger.py", 
                 "-S", TEST_SCP, 
-                "-L", SYS_LAF_DIR, 
+                "-L", NEW_NE_DIR,
+                "-t", str(threshold),
                 MODEL_DIR
-                ]
-#     scorecmd = ["./score.py", 
-#                 REF_LAF_DIR, 
-#                 SYS_LAF_DIR, 
-#                 LTF_DIR]
+               ]
+    scorecmd = ["python3",
+                "./score.py", 
+                REF_LAF_DIR, 
+                SYS_LAF_DIR, 
+                LTF_DIR
+               ]
 
     changeinNEs = True
 
-    while changeinNEs:
-        if not os.path.exists(MODEL_DIR):
-            os.makedirs(MODEL_DIR)
-            
-        if not os.path.exists(SYS_LAF_DIR):
-            os.makedirs(SYS_LAF_DIR)
-            
-        logger.info("Starting training on documents in %s at iteration %d" % (TRAIN_SCP, iteration) )
-        subprocess.call(traincmd)
-        logger.info("Starting tagging of documents in %s at iteration %d" % (TEST_SCP, iteration) )
-        subprocess.call(tagcmd)
-        
-        temp_laf_dir = os.path.join(temp_dir, 'temp_laf_dir')
-        if not os.path.exists(temp_laf_dir):
-            os.mkdir(temp_laf_dir)
-            
-        if iteration != 0:
-            SYS_LAF_DIR, changeinNEs = updateNEdirs(PREV_SYS_LAF_DIR, temp_laf_dir, SYS_LAF_DIR)
-        iteration+=1
-        PREV_SYS_LAF_DIR = SYS_LAF_DIR 
-        MODEL_DIR = os.path.join(working_dir, str(iteration), 'model')
-        SYS_LAF_DIR = os.path.join(working_dir, str(iteration), 'sys_laf')
+    while changeinNEs and (threshold >= threshold_min):
+
+        if not os.path.exists(MODEL_DIR): os.makedirs(MODEL_DIR)
+        if not os.path.exists(NEW_NE_DIR): os.makedirs(NEW_NE_DIR)
+        if not os.path.exists(SYS_LAF_DIR): os.makedirs(SYS_LAF_DIR)
         updateTrainingScript(PREV_SYS_LAF_DIR, TRAIN_SCP)
-        # TODO: update threshold for each iteration
+       
+        # Begin training     
+        logger.info("Starting training on documents in %s at iteration %d" % (TRAIN_SCP, iteration) )
+        subprocess.run(traincmd)
+        # Begin tagging
+        logger.info("Starting tagging of documents in %s at iteration %d" % (TEST_SCP, iteration) )
+        subprocess.run(tagcmd)
+        
+        if iteration != 0:
+            changeinNEs = updateNEdirs(PREV_SYS_LAF_DIR, NEW_NE_DIR, SYS_LAF_DIR)
+        else:
+            SYS_LAF_DIR = NEW_NE_DIR
+        PREV_SYS_LAF_DIR = SYS_LAF_DIR 
+        threshold-=threshold_decrement
+        iteration+=1
+        TRAIN_SCP=os.path.join(working_dir, str(iteration), 'training.list.txt')
+        MODEL_DIR=os.path.join(working_dir, str(iteration), 'model')
+        NEW_NE_DIR=os.path.join(working_dir, str(iteration), 'newNEs')
+        SYS_LAF_DIR=os.path.join(working_dir, str(iteration), 'output')
 
     print("Bootstrapping stopped after {} iterations".format(iteration))
-#    subprocess.call(scorecmd)
-    shutil.rmtree(temp_dir)
+    if not changeinNEs:
+        print("No more NEs were found on the last iteration")
+    elif threshold < threshold_min:
+        print("Threshold dropped below the minimum")
+    else:
+        print("Why bootstrapping stopped is unknown")
+    subprocess.run(scorecmd)
 
 
 
@@ -95,6 +107,10 @@ def main(args):
 Update TRAIN_SCP to contain LAF pathnames to be used in training in next iteration
 """
 def updateTrainingScript(laf_dir, scriptfile):
+
+    if not os.path.exists(os.path.dirname(scriptfile)):
+        os.makedirs(os.path.dirname(scriptfile))
+
     with open(scriptfile, 'w') as outfile:
         for fn in os.listdir(laf_dir):
             if fn.endswith('laf.xml'):
@@ -105,22 +121,22 @@ def updateTrainingScript(laf_dir, scriptfile):
 """
 Add new NE mentions to old NE mentions, if any, 
 """
-def updateNEdirs(prev_laf_dir, temp_laf_dir, new_laf_dir):
+def updateNEdirs(prev_laf_dir, new_ne_dir, new_laf_dir):
 
     changeinNEs = False
 
     for fn in prev_laf_dir:
         if fn.endswith('laf.xml'):
             prev_laf = os.path.join(prev_laf_dir, fn)
-            temp_laf = os.path.join(temp_laf_dir, fn)
+            new_laf = os.path.join(new_ne_dir, fn)
             try:
-                assert os.path.exists(temp_laf)
+                assert os.path.exists(new_laf)
             except AssertionError:
                 logging.warn("{} processed last iteration but not this one".format(fn))
-    for fn in temp_laf_dir:
+    for fn in new_ne_dir:
         if fn.endswith('laf.xml'):
             prev_laf = os.path.join(prev_laf_dir, fn)
-            temp_laf = os.path.join(temp_laf_dir, fn)
+            new_laf = os.path.join(new_ne_dir, fn)
             try:
                 assert os.path.exists(prev_laf)
             except AssertionError:
@@ -128,16 +144,19 @@ def updateNEdirs(prev_laf_dir, temp_laf_dir, new_laf_dir):
                 continue
             
             prev_laf_doc = load_doc(prev_laf, LAFDocument, logger)
-            temp_laf_doc = load_doc(temp_laf, LAFDocument, logger)
+            new_ne_doc = load_doc(new_laf, LAFDocument, logger)
             doc_id = prev_laf_doc.doc_id
 
             prev_mentions = [[tag, extent, start_char, end_char] for [entity_id, tag, extent, start_char, end_char] in prev_laf_doc.mentions()]
             prev_spans = [(start_char, end_char) for [tag, extent, start_char, end_char] in prev_mentions]
-            temp_mentions = [[tag, extent, start_char, end_char] for [entity_id, tag, extent, start_char, end_char] in temp_laf_doc.mentions()]
+            new_mentions = [[tag, extent, start_char, end_char] for [entity_id, tag, extent, start_char, end_char] in new_ne_doc.mentions()]
             mentions = []
             for m in prev_mentions:
+                # if the NE was found in the previous iterations, it is retained here
                 mentions.append(m)
-            for m in temp_mentions:
+            for m in new_mentions:
+                # if the NE was found in the previous iterations, it is not overwritten, which means that 
+                # the span's label will not be changed even if it is different this iteration
                 if (m[2], m[3]) not in prev_spans:
                     mentions.append(m)
                     changeinNEs == True
@@ -155,11 +174,34 @@ def updateNEdirs(prev_laf_dir, temp_laf_dir, new_laf_dir):
             laf_doc = LAFDocument(mentions=mentions, lang=ltf_doc.lang, doc_id=doc_id)
             laf_doc.write_to_file(laf)
 
-    return new_laf_dir, changeinNEs
+    return changeinNEs
     
 
 
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+
+    parser = argparse.ArgumentParser(description="Bootstrapped training and tagger system for NE recognition",
+                                        add_help=False,
+                                        usage="%(prog)s [options] language working_dir")
+    parser.add_argument('language', nargs='?', 
+                        help="language of data")
+    parser.add_argument('working_dir', nargs='?', 
+                        help="subdirectory inside designated working directory")
+    parser.add_argument('--threshold', nargs='?', default=0.4, type=float, 
+                        help='threshold above which NEs are retained')
+    parser.add_argument('--decrement', nargs='?', default=0.1, type=float, 
+                        help='value by which threshold is decremented each iteration')
+    parser.add_argument('--min_threshold', nargs='?', default=0.2, type=float, 
+                        help='minimum value of threshold at which iterations continue')
+    parser.add_argument('--max_iters', nargs='?', default=sys.maxsize, type=int, 
+                        help='maximum number of iterations used in bootstrapping if stopping conditions are not met')
+    args = parser.parse_args()
+
+    if len(sys.argv) < 3:
+        parser.print_help()
+        sys.exit(1)
+
+    bootstrappedNER(args.language, args.working_dir, args.threshold, args.decrement, args.min_threshold, args.max_iters)
+

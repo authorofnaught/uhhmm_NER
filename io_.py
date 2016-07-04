@@ -146,6 +146,8 @@ class LTFDocument(Tree):
                 tokena = token_.get('a')
                 tokenb = token_.get('b')
                 tokeng = token_.get('g')
+                tokenf = token_.get('f')
+                tokenj = token_.get('j')
                 if tokena != None:
                     token_As.append(strip_brackets(tokena));
                 else:
@@ -157,22 +159,30 @@ class LTFDocument(Tree):
                     token_Bs.append(-1)
                 
                 if tokeng != None:
-                    token_Gs.append(token_.get('g'));
+                    token_Gs.append(tokeng);
                 else:
                     token_Gs.append(-1)
+
+                if tokenf != None:
+                    token_Fs.append(strip_brackets(tokenf))
+                else:
+                    token_Fs.append(-2)     # -1 is already a valid value for F
+
+                if tokenj != None:
+                    token_Js.append(strip_brackets(tokenj))
+                else:
+                    token_Js.append(-2)     # -1 is already a valid value for J
                     
-#                token_Fs.append(token_.get('f'));
-#                token_Js.append(token_.get('j'));
                 token_num+=1;
-        tokens = [' ' if token is None else token for token in tokens];
-        token_onsets = [token_onset if token_onset is None else int(token_onset) for token_onset in token_onsets];
-        token_offsets = [token_offset if token_offset is None else int(token_offset) for token_offset in token_offsets];
-        token_nums = [token_num if token_num is None else int(token_num) for token_num in token_nums];
-        token_As = [token_a if token_a is None else int(token_a) for token_a in token_As];
-        token_Bs = [token_b if token_b is None else int(token_b) for token_b in token_Bs];
-        token_Gs = [token_g if token_g is None else int(token_g) for token_g in token_Gs];
-#        token_Fs = [token_f if token_f is None else int(token_f) for token_f in token_Fs];
-#        token_Js = [token_j if token_j is None else int(token_j) for token_j in token_Js];
+        tokens = ['' if token is None else token for token in tokens];
+        token_onsets = [-1 if token_onset is None else int(token_onset) for token_onset in token_onsets];
+        token_offsets = [-1 if token_offset is None else int(token_offset) for token_offset in token_offsets];
+        token_nums = [-1 if token_num is None else int(token_num) for token_num in token_nums];
+        token_As = [int(token_a) for token_a in token_As];
+        token_Bs = [int(token_b) for token_b in token_Bs];
+        token_Gs = [int(token_g) for token_g in token_Gs];
+        token_Fs = [int(token_f) for token_f in token_Fs];
+        token_Js = [int(token_j) for token_j in token_Js];
         return tokens, token_ids, token_onsets, token_offsets, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js;
 
     def tokenized(self):
@@ -206,10 +216,10 @@ class LTFDocument(Tree):
                 token_onsets.append(token_.get('start_char'));
                 token_offsets.append(token_.get('end_char'));
                 token_num+=1;
-        tokens = [' ' if token is None else token for token in tokens];
-        token_onsets = [token_onset if token_onset is None else int(token_onset) for token_onset in token_onsets];
-        token_offsets = [token_offset if token_offset is None else int(token_offset) for token_offset in token_offsets];
-        token_nums = [token_num if token_num is None else int(token_num) for token_num in token_nums];
+        tokens = ['' if token is None else token for token in tokens];
+        token_onsets = [-1 if token_onset is None else int(token_onset) for token_onset in token_onsets];
+        token_offsets = [-1 if token_offset is None else int(token_offset) for token_offset in token_offsets];
+        token_nums = [-1 if token_num is None else int(token_num) for token_num in token_nums];
         return tokens, token_ids, token_onsets, token_offsets, token_nums;
 
     def text(self):
@@ -345,7 +355,7 @@ class LAFDocument(Tree):
                            end_token];
                 mentions.append(mention);
             except Exception as e:
-                logger.warn("Error reading annotations in %s" % (e) )
+                print("Error reading annotations in %s" % (self.doc_id) )
 
         return mentions;
 
