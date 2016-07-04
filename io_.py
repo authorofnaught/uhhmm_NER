@@ -6,6 +6,8 @@ from io import StringIO;
 #from lxml import etree;
 import xml.etree.ElementTree as etree
 
+import xml.dom.minidom as minidom
+
 __all__ = ['load_doc', 'LTFDocument', 'LAFDocument', 'write_crfsuite_file'];
 
 
@@ -51,8 +53,15 @@ class Tree(object):
         xmlf : str
             Output file for XML.
         """
-        self.tree.write(xmlf, encoding='utf-8',
-                        xml_declaration=True);
+        rough_string = etree.tostring(self.tree.getroot(), 'utf-8')
+        reparsed = minidom.parseString(rough_string)
+        pretty_string = reparsed.toprettyxml(indent="\t")
+        out = open(xmlf, 'w')
+        out.write(pretty_string)
+        out.close()
+        
+        #self.tree.write(xmlf, encoding='utf-8',
+        #                xml_declaration=True);
 
 
 class LTFDocument(Tree):
@@ -215,6 +224,7 @@ class LTFDocument(Tree):
                 token_ids.append(token_.get('id'));
                 token_onsets.append(token_.get('start_char'));
                 token_offsets.append(token_.get('end_char'));
+                token_nums.append(token_num);
                 token_num+=1;
         tokens = ['' if token is None else token for token in tokens];
         token_onsets = [-1 if token_onset is None else int(token_onset) for token_onset in token_onsets];
@@ -227,6 +237,11 @@ class LTFDocument(Tree):
         """
         text = [elem.text for elem in self.tree.findall('.//ORIGINAL_TEXT')];
         text = u' '.join(text);
+        
+        if len(text) == 0:
+            text = [elem.text for elem in self.tree.findall('.//TOKEN')]
+            text = u' '.join(text)
+
         return text;
 
 
@@ -288,11 +303,13 @@ class LAFDocument(Tree):
             doc.set('lang', lang);
 
             # And for all the mentions.
-            for entity_id, tag, extent, start_char, end_char in mentions:
+            for entity_id, tag, extent, start_char, end_char, id_onset, id_offset in mentions:
                 # <ANNOTATION>...</ANNOTATION
                 annotation = etree.SubElement(doc, 'ANNOTATION');
                 annotation.set('id', entity_id);
                 annotation.set('task', 'NE'); # move to constant or arg?
+                annotation.set('start_token', id_onset)
+                annotation.set('end_token', id_offset)
                 # <EXTENT>...</EXTENT>
                 extent_elem = etree.SubElement(annotation, 'EXTENT');
                 extent_elem.text = extent;

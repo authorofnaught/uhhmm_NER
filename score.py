@@ -6,7 +6,7 @@ import sys;
 
 from io_ import load_doc, LTFDocument, LAFDocument;
 from logger import configure_logger;
-from util import convert_extents;
+from util import convert_extents, convert_indices
 
 logger = logging.getLogger();
 configure_logger(logger);
@@ -45,10 +45,15 @@ def calc_stats(sys_laf, ref_dir, ltf_dir):
         # Convert mentions to (token_onset, token_offset, tag) format.
         sys_mentions = sys_doc.mentions()
         if len(sys_mentions) > 0:
-            sys_ids, sys_tags, sys_extents, sys_char_onsets, sys_char_offsets = zip(*sys_mentions);
+            sys_ids, sys_tags, sys_extents, sys_char_onsets, sys_char_offsets, sys_entity_token_onsets, sys_entity_token_offsets = zip(*sys_mentions);
 #            sys_ids, sys_extents, sys_char_onsets, sys_char_offsets = zip(*sys_mentions);          # Score only NE extents
-            sys_mention_onsets, sys_mention_offsets = convert_extents(sys_char_onsets, sys_char_offsets,
+
+            if token_onsets[0] != None:
+                sys_mention_onsets, sys_mention_offsets = convert_extents(sys_char_onsets, sys_char_offsets,
                                                                       token_onsets, token_offsets);
+            else:
+                sys_mention_onsets, sys_mention_offsets = convert_indices(token_ids, sys_entity_token_onsets, sys_entity_token_offsets)
+                
             sys_mentions = zip(sys_tags, sys_mention_onsets, sys_mention_offsets);
 #            sys_mentions = zip(sys_mention_onsets, sys_mention_offsets);                           # Score only NE extents
             sys_mentions = set(map(tuple, sys_mentions));
@@ -57,10 +62,14 @@ def calc_stats(sys_laf, ref_dir, ltf_dir):
 
         ref_mentions = ref_doc.mentions();
         if len(ref_mentions) > 0:
-            ref_ids, ref_tags, ref_extents, ref_char_onsets, ref_char_offsets = zip(*ref_mentions);
+            ref_ids, ref_tags, ref_extents, ref_char_onsets, ref_char_offsets, ref_entity_token_onsets, ref_entity_token_offsets = zip(*ref_mentions);
 #            ref_ids, ref_extents, ref_char_onsets, ref_char_offsets = zip(*ref_mentions);          # Score only NE extents
-            ref_mention_onsets, ref_mention_offsets = convert_extents(ref_char_onsets, ref_char_offsets,
+            if token_onsets[0] != None:
+                ref_mention_onsets, ref_mention_offsets = convert_extents(ref_char_onsets, ref_char_offsets,
                                                                       token_onsets, token_offsets);
+            else:
+                ref_mention_onsets, ref_mention_offsets = convert_indices(token_ids, ref_entity_token_onsets, ref_entity_token_offsets)
+                
             ref_mentions = zip(ref_tags, ref_mention_onsets, ref_mention_offsets);
 #            ref_mentions = zip(ref_mention_onsets, ref_mention_offsets);                           # Score only NE extents
             ref_mentions = set(map(tuple, ref_mentions));

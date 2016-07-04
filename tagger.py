@@ -293,16 +293,26 @@ def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext, thresho
             # Determine char onsets/offset for mention extent.
             start_char = token_onsets[token_bi];
             end_char = token_offsets[token_ei];
+            
+            if start_char == None or end_char == None:
+                start_char = -1
+                end_char = -1
 
             # Finally, determine text of extent and append.
             extent_bi = spans[token_bi][0];
             extent_ei = spans[token_ei][1];
             extent = txt[extent_bi:extent_ei+1];
+            
+            id_onset = token_ids[token_bi]
+            id_offset = token_ids[token_ei]
+            
             mentions.append([entity_id,           # entity id
                              tag,                 # NE type
                              extent,              # extent text
                              start_char,          # extent char onset
                              end_char,            # extent char offset
+                             id_onset,
+                             id_offset
                             ]);
 
             n += 1;
@@ -348,12 +358,14 @@ if __name__ == '__main__':
     parser.add_argument('-t', nargs='?', default=(2**-149), type=float,
                         metavar='t', dest='threshold',
                         help='Set threshold for NE probability (default: 2**-149)');
+    parser.add_argument('-d', '--debug', action='store_true', default=False)
+    
     args = parser.parse_args();
 
     if len(sys.argv) == 1:
         parser.print_help();
         sys.exit(1);
-
+   
     # Determine ltfs to process.
     if not args.scpf is None:
         with open(args.scpf, 'r') as f:
@@ -373,8 +385,18 @@ if __name__ == '__main__':
     # Perform tagging in parallel, dumping results to args.tagged_dir.
     n_jobs = min(len(args.ltfs), args.n_jobs);
     modelf = os.path.join(args.model_dir, 'tagger.crf');
-    f = delayed(tag_file);
-    Parallel(n_jobs=n_jobs, verbose=0)(f(ltf, aligner, enc, chunker,
+    
+    if args.debug:
+        for ltf in args.ltfs:
+            tag_file(ltf, aligner, enc, chunker,
+                                         modelf,
+                                         args.tagged_dir,
+                                         args.ext, 
+                                         args.threshold,
+                                         A_vals, B_vals, G_vals)
+    else:
+        f = delayed(tag_file);
+        Parallel(n_jobs=n_jobs, verbose=0)(f(ltf, aligner, enc, chunker,
                                          modelf,
                                          args.tagged_dir,
                                          args.ext, 
