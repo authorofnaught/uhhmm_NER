@@ -45,7 +45,8 @@ class Aligner(object):
 
                 # Advance in text.
                 bi = token_ei + 1;
-            except ValueError:
+            except ValueError as e:
+                print("Exception raised: %s" % e)
                 raise AlignmentFailed(token);
 
         return spans;
