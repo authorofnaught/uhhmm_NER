@@ -24,7 +24,7 @@ logger = logging.getLogger();
 configure_logger(logger);
 
 
-def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext, threshold, A_vals, B_vals, G_vals, F_vals, J_vals):
+def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext, threshold, A_vals, B_vals, G_vals, F_vals, J_vals, featsfile):
     """Extract features for tokenization in LTF file and tag named entities.
 
     Inputs
@@ -77,7 +77,10 @@ def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext, thresho
         # Extract features
         featsf = os.path.join(temp_dir, 'feats.txt');
 #        feats = enc.get_feats(tokens, token_As, token_Bs, token_Gs);
-        feats = enc.get_feats(tokens, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js, A_vals, B_vals, G_vals, F_vals, J_vals);
+        feats = enc.get_feats(tokens, token_nums, 
+                                token_As, token_Bs, token_Gs, token_Fs, token_Js, 
+                                A_vals, B_vals, G_vals, F_vals, J_vals,
+                                featsfile);
         write_crfsuite_file(featsf, feats);
 
         shutil.copy(featsf, "featuresfile") #DEBUG
@@ -359,6 +362,8 @@ if __name__ == '__main__':
                         metavar='t', dest='threshold',
                         help='Set threshold for NE probability (default: 2**-149)');
     parser.add_argument('-d', '--debug', action='store_true', default=False)
+    parser.add_argument('-F', nargs='?', default=None, dest='featsfile',
+                        help='file with features to be retained, one per line, format=F[0-9]+') 
     
     args = parser.parse_args();
 
@@ -393,7 +398,8 @@ if __name__ == '__main__':
                                          args.tagged_dir,
                                          args.ext, 
                                          args.threshold,
-                                         A_vals, B_vals, G_vals)
+                                         A_vals, B_vals, G_vals, F_vals, J_vals, 
+                                         args.featsfile)
     else:
         f = delayed(tag_file);
         Parallel(n_jobs=n_jobs, verbose=0)(f(ltf, aligner, enc, chunker,
@@ -401,4 +407,5 @@ if __name__ == '__main__':
                                          args.tagged_dir,
                                          args.ext, 
                                          args.threshold,
-                                         A_vals, B_vals, G_vals, F_vals, J_vals) for ltf in args.ltfs);
+                                         A_vals, B_vals, G_vals, F_vals, J_vals, 
+                                         args.featsfile) for ltf in args.ltfs);

@@ -8,6 +8,7 @@ import logging
 from logger import configure_logger
 from io_ import load_doc, LAFDocument
 import argparse
+from CrfsuiteModel import CrfsuiteModel
 
 
 def bootstrappedNER(lang, working_dir_name, 
@@ -30,42 +31,18 @@ def bootstrappedNER(lang, working_dir_name,
     LTF_DIR="/Users/authorofnaught/Projects/LORELEI/NER/LTF-ABG/"+lang+"/" # directory containing LTF files with uhhmm features
     TEST_SCP="/Users/authorofnaught/Projects/LORELEI/NER/TEST-SCP/"+lang+"335.txt" # file with paths to LTF files for tagging, one per line
 
-
     """These values, directories, and files are updated with each iteration"""
-    PREV_SYS_LAF_DIR=REF_LAF_DIR # stores location of previous iteration's output
+    PREV_SYS_LAF_DIR = REF_LAF_DIR # stores location of previous iteration's output
+    FEATS_FILE = None # file containing features eelcted from this iteration for the following iteration
     threshold = threshold_start_val # prob threshold above which NEs are retained, below which rejected
     iteration = 0 # number of bootstrapping iteration
-    TRAIN_SCP=os.path.join(working_dir, str(iteration), 'training.list.txt') # file with paths to LAF files for training, one per line
-    MODEL_DIR=os.path.join(working_dir, str(iteration), 'model') # directory for trained model
-    NEW_NE_DIR=os.path.join(working_dir, str(iteration), 'newNEs') # directory for NEs found in a single iteration
-    SYS_LAF_DIR=os.path.join(working_dir, str(iteration), 'output') # directory for tagger output (LAF files)
-    updateTrainingScript(REF_LAF_DIR, TRAIN_SCP) # initialize TRAIN_SCP to contain paths to all gazetteer-generated LAFs
+    TRAIN_SCP = os.path.join(working_dir, str(iteration), 'training.list.txt') # file with paths to LAF files for training, one per line
+    MODEL_DIR = os.path.join(working_dir, str(iteration), 'model') # directory for trained model
+    NEW_NE_DIR = os.path.join(working_dir, str(iteration), 'newNEs') # directory for NEs found in a single iteration
+    SYS_LAF_DIR = os.path.join(working_dir, str(iteration), 'output') # directory for tagger output (LAF files)
 
-        
-    traincmd = ["python3",
-                "./train.py", 
-                "--display_progress", # Display crfsuite output of model iterations, if desired. 
-                "--max_iter", "5",
-                "-S", TRAIN_SCP, 
-                MODEL_DIR, 
-                LTF_DIR
-               ]
-    tagcmd   = ["python3",
-                "./tagger.py", 
-                "-S", TEST_SCP, 
-                "-L", NEW_NE_DIR,
-                "-t", str(threshold),
-                MODEL_DIR
-               ]
-    scorecmd = ["python3",
-                "./score.py", 
-                REF_LAF_DIR, 
-                SYS_LAF_DIR, 
-                LTF_DIR
-               ]
 
     changeinNEs = True
-
     while changeinNEs and (threshold >= threshold_min):
 
         if not os.path.exists(MODEL_DIR): os.makedirs(MODEL_DIR)
@@ -73,18 +50,59 @@ def bootstrappedNER(lang, working_dir_name,
         if not os.path.exists(SYS_LAF_DIR): os.makedirs(SYS_LAF_DIR)
         updateTrainingScript(PREV_SYS_LAF_DIR, TRAIN_SCP)
        
+        if iteration != 0:                  # FEATS_FILE is not None
+                traincmd = ["python3",
+                            "./train.py", 
+                            "--display_progress", 
+                            "--max_iter", "5",
+                            "-F", FEATS_FILE,
+                            "-S", TRAIN_SCP, 
+                            MODEL_DIR, 
+                            LTF_DIR
+                           ]
+                tagcmd   = ["python3",
+                            "./tagger.py", 
+                            "-F", FEATS_FILE,
+                            "-S", TEST_SCP, 
+                            "-L", NEW_NE_DIR,
+                            "-t", str(threshold),
+                            MODEL_DIR
+                           ]
+        else:                               # FEATS_FILE is None
+                traincmd = ["python3",
+                            "./train.py", 
+                            "--display_progress", 
+                            "--max_iter", "5",
+                            "-S", TRAIN_SCP, 
+                            MODEL_DIR, 
+                            LTF_DIR
+                           ]
+                tagcmd   = ["python3",
+                            "./tagger.py", 
+                            "-S", TEST_SCP, 
+                            "-L", NEW_NE_DIR,
+                            "-t", str(threshold),
+                            MODEL_DIR
+                           ]
+
         # Begin training     
         logger.info("Starting training on documents in %s at iteration %d" % (TRAIN_SCP, iteration) )
         subprocess.run(traincmd)
+
         # Begin tagging
         logger.info("Starting tagging of documents in %s at iteration %d" % (TEST_SCP, iteration) )
         subprocess.run(tagcmd)
-        
+
+        # Update values, directories, and files
         if iteration != 0:
+            print(FEATS_FILE)
             changeinNEs = updateNEdirs(PREV_SYS_LAF_DIR, NEW_NE_DIR, SYS_LAF_DIR)
         else:
             SYS_LAF_DIR = NEW_NE_DIR
-        PREV_SYS_LAF_DIR = SYS_LAF_DIR 
+        PREV_SYS_LAF_DIR = SYS_LAF_DIR
+        FEATS_FILE=os.path.join(working_dir, str(iteration), 'selected_feats.txt')
+        print(FEATS_FILE)
+        select_features(FEATS_FILE, MODEL_DIR, (1.0-threshold))
         threshold-=threshold_decrement
         iteration+=1
         TRAIN_SCP=os.path.join(working_dir, str(iteration), 'training.list.txt')
@@ -99,6 +117,14 @@ def bootstrappedNER(lang, working_dir_name,
         print("Threshold dropped below the minimum")
     else:
         print("Why bootstrapping stopped is unknown")
+
+    scorecmd = ["python3",
+                "./score.py", 
+                REF_LAF_DIR, 
+                SYS_LAF_DIR, 
+                LTF_DIR
+               ]
+
     subprocess.run(scorecmd)
 
 
@@ -116,6 +142,21 @@ def updateTrainingScript(laf_dir, scriptfile):
             if fn.endswith('laf.xml'):
                 outfile.write("{}\n".format(os.path.join(laf_dir, fn)))
 
+
+
+"""
+Make featsfile for next iteration from features which did not zero out this iteration
+"""
+def select_features(featsfile, model_dir, fraction):
+
+    modelfile = os.path.join(model_dir, 'tagger.crf')
+    model = CrfsuiteModel(modelfile)
+    
+    with open(featsfile, 'w') as outfile:
+        selectedFeats = model.selectFeatures(fraction)
+        featstring = '\n'.join(selectedFeats)
+        outfile.write(featstring)
+         
 
 
 """

@@ -19,7 +19,7 @@ logger = logging.getLogger();
 configure_logger(logger);
 
 
-def write_train_data(lafs, ltf_dir, enc, trainf):
+def write_train_data(lafs, ltf_dir, enc, trainf, featsfile):
     """Extract features and target labels for each LTF/LAF pair and write to
     disk in CRFSuite data format.
 
@@ -132,7 +132,10 @@ def write_train_data(lafs, ltf_dir, enc, trainf):
                     prev_mention_offset = mention_offset;
                 mentions_ = temp_mentions_;
 
-                feats, targets = enc.get_feats_targets(tokens, mentions_, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js, A_vals, B_vals, G_vals, F_vals, J_vals);
+                feats, targets = enc.get_feats_targets(tokens, mentions_, token_nums, 
+                                                        token_As, token_Bs, token_Gs, token_Fs, token_Js, 
+                                                        A_vals, B_vals, G_vals, F_vals, J_vals,
+                                                        featsfile);
 
             except Exception as e:
                 logger.warn('Feature extraction failed for %s with exception %s with info %s. Skipping.' % (laf, e, sys.exc_info()[0]) );
@@ -190,6 +193,8 @@ if __name__ == '__main__':
     parser.add_argument('--display_progress', action='store_true',
                         default=False,
                         help='Display training progress.')
+    parser.add_argument('-F', nargs='?', default=None, dest='featsfile',
+                        help='file with features to be retained, one per line, format=F[0-9]+') 
     args = parser.parse_args();
 
     if len(sys.argv) == 1:
@@ -220,7 +225,7 @@ if __name__ == '__main__':
 
     # Train.
     trainf = os.path.join(temp_dir, 'train.txt')
-    write_train_data(args.lafs, args.ltf_dir, enc, trainf);
+    write_train_data(args.lafs, args.ltf_dir, enc, trainf, args.featsfile);
 
     shutil.copyfile(trainf, "trainingfile") #DEBUG
 

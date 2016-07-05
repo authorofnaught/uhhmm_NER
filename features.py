@@ -48,7 +48,10 @@ class Encoder(object):
         """
         raise NotImplementedError;
 
-    def get_feats(self, tokens, token_nums, token_As=None, token_Bs=None, token_Gs=None, token_Fs=None, token_Js=None, A_vals=None, B_vals=None, G_vals=None, F_vals=None, J_vals=None):
+    def get_feats(self, tokens, token_nums, 
+                    token_As=None, token_Bs=None, token_Gs=None, token_Fs=None, token_Js=None, 
+                    A_vals=None, B_vals=None, G_vals=None, F_vals=None, J_vals=None,
+                    featsfile=None):
         """Return features corresponding to token sequence.
 
         Inputs
@@ -61,6 +64,14 @@ class Encoder(object):
         feats : lsit of tuples
             Feature vector sequence.
         """
+        if featsfile:
+            selectedFeats = []
+            with open(featsfile, 'r') as f:
+                for line in f:
+                    selectedFeats.append(int(line.strip().replace('F','')))
+        else:
+            selectedFeats=None
+
 
 #        feats = [self.get_feats_for_token(token) for token in tokens];
         feats = []
@@ -158,10 +169,11 @@ class Encoder(object):
         feats = zip(*feats);
         new_feats = [];
         for ii, feats_ in enumerate(feats):
-            for pos in range(-self.n_left, self.n_right+1):
-                feat_id = 'F%d[%d]' % (ii, pos);
-                k = -pos;
-                new_feats.append(['%s=%s' % (feat_id, val) if val is not None else val for val in roll(feats_, k)]);
+            if not selectedFeats or ii in selectedFeats:
+                for pos in range(-self.n_left, self.n_right+1):
+                    feat_id = 'F%d[%d]' % (ii, pos);
+                    k = -pos;
+                    new_feats.append(['%s=%s' % (feat_id, val) if val is not None else val for val in roll(feats_, k)]);
         new_feats = list(zip(*new_feats))
 
         # Filter out None vals in rows where they occur.
@@ -193,7 +205,10 @@ class Encoder(object):
             tags[bi:ei+1] = self.chunker.chunk_to_tags(chunk, tag);
         return tags;
 
-    def get_feats_targets(self, tokens, mentions, token_nums, token_As=None, token_Bs=None, token_Gs=None, token_Fs=None, token_Js=None, A_vals=None, B_vals=None, G_vals=None, F_vals=None, J_vals=None):
+    def get_feats_targets(self, tokens, mentions, token_nums, 
+                            token_As=None, token_Bs=None, token_Gs=None, token_Fs=None, token_Js=None, 
+                            A_vals=None, B_vals=None, G_vals=None, F_vals=None, J_vals=None,
+                            featsfile=None):
         """Return features/tag sequence to train against.
 
         Inputs
@@ -213,7 +228,10 @@ class Encoder(object):
         targets : list of str
             Target label sequence.
         """
-        feats = self.get_feats(tokens, token_nums, token_As, token_Bs, token_Gs, token_Fs, token_Js, A_vals, B_vals, G_vals, F_vals, J_vals);
+        feats = self.get_feats(tokens, token_nums, 
+                                token_As, token_Bs, token_Gs, token_Fs, token_Js, 
+                                A_vals, B_vals, G_vals, F_vals, J_vals, 
+                                featsfile);
         targets = self.get_targets(tokens, mentions);
         return feats, targets;
 
