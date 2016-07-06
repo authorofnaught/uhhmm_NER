@@ -104,11 +104,11 @@ class Encoder(object):
                 token_feats.append("J=%d" % token_Js[ii])
                 token_feats.append("FJ=%d%d" % (token_Fs[ii], token_Js[ii]) )
                 
-             """ Add whether token is first token as feature (may be useful for case where f = j = -1) """
-             token_feats.append(token_nums[ii] == 0)
+            """ Add whether token is first token as feature (may be useful for case where f = j = -1) """
+            token_feats.append(token_nums[ii] == 0)
 
-             """ Add whether token is second token as feature (may be useful for case where f = j = -1) """
-             token_feats.append(token_nums[ii] == 1)
+            """ Add whether token is second token as feature (may be useful for case where f = j = -1) """
+            token_feats.append(token_nums[ii] == 1)
 
             """ Add random A values as features (use in order to check for performance at chance) """
 #            if A_vals != None:
