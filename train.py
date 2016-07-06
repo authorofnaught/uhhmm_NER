@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse;
 import pickle;
 import glob;
@@ -113,7 +115,7 @@ def write_train_data(lafs, ltf_dir, enc, trainf, featsfile):
                     # Map to the minimal enclosing span of tokens in the
                     # supplied LTF.
                     entity_ids, tags, extents, char_onsets, char_offsets, entity_token_onsets, entity_token_offsets = zip(*mentions);
-                    if token_onsets[0] != None:
+                    if token_onsets[0] != -1:
                         mention_onsets, mention_offsets = convert_extents(char_onsets, char_offsets,
                                                                       token_onsets, token_offsets)
                     else:
@@ -227,7 +229,7 @@ if __name__ == '__main__':
     trainf = os.path.join(temp_dir, 'train.txt')
     write_train_data(args.lafs, args.ltf_dir, enc, trainf, args.featsfile);
 
-    shutil.copyfile(trainf, "trainingfile") #DEBUG
+    shutil.copyfile(trainf, os.path.join(args.model_dir, 'train.txt') ) #DEBUG
 
     def is_empty(fn):
         return os.stat(fn).st_size == 0;
@@ -265,7 +267,7 @@ if __name__ == '__main__':
                '-a', 'lbfgs', # Train with gradient descent using L-BFGS method
                '-p', 'c1=1.0',
                '-p', 'c2=1.0',
-               '-p', 'max_iterations=%d' % args.max_iter,
+               #'-p', 'max_iterations=%d' % args.max_iter,
                #'-p', 'num_memories=6',
                #'-p', 'epsilon=%f' % args.epsilon,
                #'-p', 'stop=10',

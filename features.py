@@ -89,21 +89,26 @@ class Encoder(object):
             """ Add word feats """
             token_feats.extend( word_type(token) )
 
-            """ Add A-B-G triple as non-binary feature """
-#            if token_As != None and token_Bs != None and token_Gs != None:
-#                token_feats.append("{}-{}-{}".format(str(token_As[ii]), str(token_Bs[ii]), str(token_Gs[ii])))
-            """ Add A-B double as non-binary feature """
-#            if token_As != None and token_Bs != None:
-#                token_feats.append("{}-{}".format(str(token_As[ii]), str(token_Bs[ii])))
-            """ Add A as non-binary feature """
-#            if token_As != None:
-#                token_feats.append(token_As[ii])
-            """ Add B as non-binary feature """
-#            if token_Bs != None:
-#                token_feats.append(token_Bs[ii])
-            """ Add G as non-binary feature """
-#            if token_Gs != None:
-#                token_feats.append(token_Gs[ii])
+            """ Add A as binary feature """
+            if token_As != None:
+                token_feats.append("A=%d" % token_As[ii])
+            """ Add B as binary feature """
+            if token_Bs != None:
+                token_feats.append("B=%d" % token_Bs[ii])
+            """ Add G as binary feature """
+            if token_Gs != None:
+                token_feats.append("G=%d" % token_Gs[ii])
+
+            if token_Fs != None and token_Js != None:
+                token_feats.append("F=%d" % token_Fs[ii])           
+                token_feats.append("J=%d" % token_Js[ii])
+                token_feats.append("FJ=%d%d" % (token_Fs[ii], token_Js[ii]) )
+                
+             """ Add whether token is first token as feature (may be useful for case where f = j = -1) """
+             token_feats.append(token_nums[ii] == 0)
+
+             """ Add whether token is second token as feature (may be useful for case where f = j = -1) """
+             token_feats.append(token_nums[ii] == 1)
 
             """ Add random A values as features (use in order to check for performance at chance) """
 #            if A_vals != None:
@@ -133,36 +138,6 @@ class Encoder(object):
 #            for v in [-1, 0, 1]:
 #                token_feats.append(pseudo == v)
 
-            """ Add A as binary feature (True or False for each possible value) """
-            if token_As != None and A_vals != None:
-                for v in A_vals:
-                    token_feats.append(token_As[ii] == v)
-
-            """ Add B as binary feature (True or False for each possible value) """
-            if token_Bs != None and B_vals != None:
-                for v in B_vals:
-                    token_feats.append(token_Bs[ii] == v)
-
-            """ Add G as binary feature (True or False for each possible value) """
-            if token_Gs != None and G_vals != None:
-                for v in G_vals:
-                    token_feats.append(token_Gs[ii] == v)
-
-            """ Add F as binary feature (True or False for each possible value) """
-            if token_Fs != None and F_vals != None:
-                for v in F_vals:
-                    token_feats.append(token_Fs[ii] == v)
-
-            """ Add J as binary feature (True or False for each possible value) """
-            if token_Js != None and J_vals != None:
-                for v in J_vals:
-                    token_feats.append(token_Js[ii] == v)
-
-            """ Add whether token is first token as feature (may be useful for case where f = j = -1) """
-            token_feats.append(token_nums[ii] == 0)
-
-            """ Add whether token is second token as feature (may be useful for case where f = j = -1) """
-            token_feats.append(token_nums[ii] == 1)
 
             feats.append(token_feats)
 

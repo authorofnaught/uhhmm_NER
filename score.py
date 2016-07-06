@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse;
 import glob;
 import logging;
@@ -48,7 +49,7 @@ def calc_stats(sys_laf, ref_dir, ltf_dir):
             sys_ids, sys_tags, sys_extents, sys_char_onsets, sys_char_offsets, sys_entity_token_onsets, sys_entity_token_offsets = zip(*sys_mentions);
 #            sys_ids, sys_extents, sys_char_onsets, sys_char_offsets = zip(*sys_mentions);          # Score only NE extents
 
-            if token_onsets[0] != None:
+            if token_onsets[0] != -1:
                 sys_mention_onsets, sys_mention_offsets = convert_extents(sys_char_onsets, sys_char_offsets,
                                                                       token_onsets, token_offsets);
             else:
@@ -64,7 +65,7 @@ def calc_stats(sys_laf, ref_dir, ltf_dir):
         if len(ref_mentions) > 0:
             ref_ids, ref_tags, ref_extents, ref_char_onsets, ref_char_offsets, ref_entity_token_onsets, ref_entity_token_offsets = zip(*ref_mentions);
 #            ref_ids, ref_extents, ref_char_onsets, ref_char_offsets = zip(*ref_mentions);          # Score only NE extents
-            if token_onsets[0] != None:
+            if token_onsets[0] != -1:
                 ref_mention_onsets, ref_mention_offsets = convert_extents(ref_char_onsets, ref_char_offsets,
                                                                       token_onsets, token_offsets);
             else:
