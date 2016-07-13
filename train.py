@@ -21,7 +21,7 @@ logger = logging.getLogger();
 configure_logger(logger);
 
 
-def write_train_data(lafs, ltf_dir, enc, trainf, featsfile):
+def write_train_data(lafs, ltf_dir, enc, trainf, featsfile, prob=1.0):
     """Extract features and target labels for each LTF/LAF pair and write to
     disk in CRFSuite data format.
 
@@ -145,7 +145,8 @@ def write_train_data(lafs, ltf_dir, enc, trainf, featsfile):
                 continue;
 
             # Write to file.
-            write_crfsuite_file(f, feats, targets);
+            #if len(set(targets)) > 1 or targets[0] != 'O':
+            write_crfsuite_file(f, feats, targets, prob);
 
             
 ##########################
@@ -197,6 +198,8 @@ if __name__ == '__main__':
                         help='Display training progress.')
     parser.add_argument('-F', nargs='?', default=None, dest='featsfile',
                         help='file with features to be retained, one per line, format=F[0-9]+') 
+    parser.add_argument('-p', type=float, default=1.0, dest="prob", help="Probability of keeping a negative ('O') instance")
+    
     args = parser.parse_args();
 
     if len(sys.argv) == 1:
@@ -227,7 +230,7 @@ if __name__ == '__main__':
 
     # Train.
     trainf = os.path.join(temp_dir, 'train.txt')
-    write_train_data(args.lafs, args.ltf_dir, enc, trainf, args.featsfile);
+    write_train_data(args.lafs, args.ltf_dir, enc, trainf, args.featsfile, args.prob);
 
     shutil.copyfile(trainf, os.path.join(args.model_dir, 'train.txt') ) #DEBUG
 

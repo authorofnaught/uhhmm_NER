@@ -2,7 +2,7 @@
 """
 from functools import wraps;
 
-__all__ = ['DummyChunkEncoder', 'BILOUChunkEncoder'];
+__all__ = ['DummyChunkEncoder', 'BILOUChunkEncoder', 'BIOChunkEncoder'];
 
 
 class ChunkingFailedException(Exception): pass
@@ -159,5 +159,113 @@ class BILOUChunkEncoder(ChunkEncoder):
                     position = 'B';
                 elif is_end:
                     position = 'L';
+            new_positions.append(position);
+        return new_positions;
+
+class BIOChunkEncoder(ChunkEncoder):
+    """Implements representation of text chunks using the BIO scheme.
+
+    The BIO scheme classifies each token as being the Beginning, Inside,
+    or Outside of a chunk. 
+    """
+    @wraps(ChunkEncoder.chunk_to_tags)
+    def chunk_to_tags(self, chunk, label, outside=False):
+        n_tokens = len(chunk);
+        tags = [];
+        if outside:
+            tags = ['O' for ii in range(n_tokens)];
+        else:
+            tags = ['B'];
+            for ii in range(n_tokens-1):
+                tags.append('I');
+        
+        full_tags = []
+        for tag in tags:
+            if tag == 'B':
+                full_tags.append("B_%s" % (label) )
+            else:
+                full_tags.append(tag)
+                
+#        tags = ['%s_%s' % (tag, label) for tag in tags];
+        assert len(tags) == n_tokens
+        assert len(full_tags) == n_tokens
+        return full_tags;
+
+    @wraps(ChunkEncoder.tags_to_chunks)
+    def tags_to_chunks(self, tags):
+        positions = [self.get_position(tag) for tag in tags];
+        positions = self.fix_positions(positions);
+        labels = [self.get_label(tag) for tag in tags];
+        
+        
+        begin_pos = set(['B', 'O']);
+        begin_ind = [ii for ii, pos in enumerate(positions) if pos in begin_pos];
+        
+        in_pos = set(['B', 'I']);
+        out_pos = set(['O'])
+        
+        end_ind = []
+        for ii, pos in enumerate(positions):
+            if pos in in_pos:
+                if ii+1 == len(positions) or positions[ii+1] != 'I':
+                    end_ind.append(ii)
+            elif pos == 'O':
+                end_ind.append(ii)
+                
+        if len(begin_ind) != len(end_ind):
+            raise ChunkingFailedException;
+
+        chunks = [];
+        for bi, ei in zip(begin_ind, end_ind):
+            if ei < bi:
+                raise ChunkingFailedException;
+            chunks.append([bi, ei, labels[bi]]);
+        return chunks;
+        
+    def get_position(self, extended_tag):
+        """Return position encoded in extended tag.
+
+        Inputs
+        ------
+        extended_tag : str
+           Extended tag for token in form {Position}_{Label}.
+        """
+        return extended_tag.split('_')[0];
+
+    def get_label(self, extended_tag):
+        """Return label encoded in extended tag.
+
+        Inputs
+        ------
+        extended_tag : str
+           Extended tag for token in form {Position}_{Label}.
+        """
+        if extended_tag == 'O':
+            label = 'O';
+        else:
+            fields = extended_tag.split('_');
+            label = '_'.join(fields[1:]);
+        return label;
+
+    def fix_positions(self, positions):
+        """Fix some pathologies present in tag sequences output by CRFSuite.
+
+        Namely, this fixes illegal sequences such as [O, I]
+
+        Inputs
+        ------
+        positions : list
+            List of positions.
+        """
+        outside_edges = set(['O', None]);
+        n_tags = len(positions);
+        new_positions = [];
+        for ii, position in enumerate(positions):
+            position = position;
+            if position == 'I':
+                prev_position = positions[ii-1] if ii > 0 else None;
+                is_begin = prev_position in outside_edges;
+                if is_begin:
+                    position = 'B';
             new_positions.append(position);
         return new_positions;

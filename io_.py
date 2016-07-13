@@ -2,7 +2,7 @@
 """
 import os;
 from io import StringIO;
-
+import random
 #from lxml import etree;
 import xml.etree.ElementTree as etree
 
@@ -310,6 +310,7 @@ class LAFDocument(Tree):
                 annotation.set('task', 'NE'); # move to constant or arg?
                 annotation.set('start_token', id_onset)
                 annotation.set('end_token', id_offset)
+                annotation.set('type', tag)
                 # <EXTENT>...</EXTENT>
                 extent_elem = etree.SubElement(annotation, 'EXTENT');
                 extent_elem.text = extent;
@@ -402,7 +403,7 @@ def load_doc(xmlf, cls, logger):
     return doc;
 
 
-def write_crfsuite_file(fo, feats, targets=None):
+def write_crfsuite_file(fo, feats, targets=None, o_prob=1.0):
     """Write features/targets in CRFsuite format.
 
     CRFsuite represents one trainin example per line, each respecting the
@@ -434,7 +435,11 @@ def write_crfsuite_file(fo, feats, targets=None):
         if targets is None:
             fields.append('');
         else:
+            if targets[ii] == 'O' and random.random() > o_prob:
+                continue
+                
             fields.append(targets[ii]);
+
         fields.extend(feats_);
         line = '%s\n' % ('\t'.join(fields));
         fo.write(line);

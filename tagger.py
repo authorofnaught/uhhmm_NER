@@ -13,7 +13,7 @@ import traceback
 from joblib.parallel import Parallel, delayed;
 
 from align import Aligner;
-from chunk import BILOUChunkEncoder;
+from chunk import BILOUChunkEncoder, BIOChunkEncoder
 from features import OrthographicEncoder;
 from io_ import load_doc, LTFDocument, LAFDocument, write_crfsuite_file;
 from logger import configure_logger;
@@ -112,37 +112,28 @@ def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext, thresho
         If the seqeuence contains only one tag, that tag is returned as a U tag.
         
         """
-        def _check_BIL_sequence(tags, probs, threshold):
-
+        def _check_BIO_sequence(tags, probs, threshold):
+            
+            
             nextpart = ''
 
             if len(tags) < 1:
-
                 logging.warn("Empty tag sequence submitted as BI*L sequence.")
 
             elif len(tags) == 1:
-
-                logging.warn("Tag sequence of length 1 submitted as BI*L sequence.")
-
+                #logging.warn("Tag sequence of length 1 submitted as BI*L sequence.")
                 if probs[0] >= threshold:   # compare probs, not abs vals of logprobs, hence >= and not <=
-
-                    nextpart = 'U{}'.format(tags[0][1:])
-
+                    nextpart = 'B{}'.format(tags[0][1:])
                 else: 
-
                     nextpart = 'O\n'
 
             else:
-
                 try:
-
-                    assert tags[0][0] == 'B' and tags[-1][0] == 'L'
-
+                    assert tags[0][0] == 'B' and tags[-1][0] == 'I'
                 except AssertionError:
-
-                    logging.warn('Incomplete BI*L sequence submitted.')
+                    logging.warn('Incomplete BI* sequence submitted.')
                     tags[0] = 'B{}'.format(tags[0][1:])
-                    tags[-1] = 'L{}'.format(tags[-1][1:])
+                    tags[-1] = 'I{}'.format(tags[-1][1:])
 
 #                NElogProb = reduce(lambda x, y: (log(x) * -1) + (log(y) * -1), probs)/len(probs)
 #                if NElogProb <= (log(threshold) * -1): # compare abs vals of logprobs, hence <= and not >=
@@ -152,11 +143,8 @@ def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext, thresho
                         count+=1
 
                 if count >= len(probs)/2.0:
-
                     nextpart = ''.join(tags)
-
                 else:
-
                     nextpart = 'O\n'*len(NEtags)
 
             return nextpart
@@ -168,104 +156,46 @@ def tag_file(ltf, aligner, enc, chunker, modelf, tagged_dir, tagged_ext, thresho
                 NEtags = None
                 NEprobs = None
                 for line in f_in.read().split('\n'):
-
                     try:
-
                         assert ':' in line
-
                         tag, prob = line.strip().split(':')
 
-
                         if tag[0] == 'O':
-                        # if seq in play, check seq
-                        # write tag
-
+                            # if seq in play, check seq
+                            # write tag
                             if NEtags:
-
-                                f_out.write(_check_BIL_sequence(NEtags, NEprobs, threshold))
+                                f_out.write(_check_BIO_sequence(NEtags, NEprobs, threshold))
                                 NEtags = None
                                 NEprobs = None
                                 
                             f_out.write(tag+'\n')
-
-
-                        elif tag[0] == 'U':
-                        # if seq in play, check seq
-                        # if prob >= threshold, write tag
-                        # else, write tag = O
-
-                            if NEtags:
-
-                                f_out.write(_check_BIL_sequence(NEtags, NEprobs, threshold))
-                                NEtags = None
-                                NEprobs = None
-                            
-                            if float(prob) >= threshold: # compare probs, not abs vals of logprobs, hence >= and not <=
-
-                                f_out.write(tag+'\n')
-
-                            else:
-
-                                f_out.write('O\n')
-
-
                         elif tag[0] == 'B':
-                        # if seq in play, check seq
-                        # start new seq with tag
-
+                            # if seq in play, check seq
+                            # start new seq with tag
                             if NEtags:
-
-                                f_out.write(_check_BIL_sequence(NEtags, NEprobs, threshold))
+                                f_out.write(_check_BIO_sequence(NEtags, NEprobs, threshold))
 
                             NEtags = [tag+'\n']
                             NEprobs = [float(prob)]
-
-
                         elif tag[0] == 'I':
-                        # if seq in play, add tag to seq
-                        # else, start new seq with tag = B
-
+                            # if seq in play, add tag to seq
+                            # else, start new seq with tag = B
                             if NEtags:
-
                                 NEtags.append(tag+'\n')
                                 NEprobs.append(float(prob))
-
                             else:
-
                                 logging.warn("Found an out of sequence I tag.")
                                 tag = 'B{}'.format(tag[1:])
                                 NEtags = [tag+'\n']
-                                NEprobs = [float(prob)]
-
-
-                        elif tag[0] == 'L':
-                        # if seq in play, add tag to seq and check seq
-                        # else, start new seq with tag = B
-
-                            if NEtags:
-
-                                NEtags.append(tag+'\n')
-                                NEprobs.append(float(prob))
-                                f_out.write(_check_BIL_sequence(NEtags, NEprobs, threshold))
-                                NEtags = None
-                                NEprobs = None
-
-                            else:
-
-                                logging.warn("Found an out of sequence L tag.")
-                                tag = 'B{}'.format(tag[1:])
-                                NEtags = [tag+'\n']
-                                NEprobs = [float(prob)]
-                                
+                                NEprobs = [float(prob)]                                
 
                     except AssertionError:
-
                         pass
 #                        logging.warn('No ":" in line {}'.format(line))  #DEBUG
 
                 if NEtags: # Necessary if tagsf ends with an incomplete BI*L sequence
 
-                    f_out.write(_check_BIL_sequence(NEtags, NEprobs, threshold))
+                    f_out.write(_check_BIO_sequence(NEtags, NEprobs, threshold))
                     NEtags = None
                     NEprobs = None
 
@@ -378,7 +308,7 @@ if __name__ == '__main__':
             args.ltfs = [l.strip() for l in f.readlines()];
 
     # Initialize chunker, aligner, and encoder.
-    chunker = BILOUChunkEncoder();
+    chunker = BIOChunkEncoder();
     aligner = Aligner();
     encf = os.path.join(args.model_dir, 'tagger.enc');
     with open(encf, 'rb') as f:

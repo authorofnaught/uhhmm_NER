@@ -4,7 +4,7 @@ from functools import wraps;
 import re;
 import random;
 
-from chunk import BILOUChunkEncoder;
+from chunk import BILOUChunkEncoder, BIOChunkEncoder
 from io_ import LTFDocument, LAFDocument;
 
 __all__ = ['OrthographicEncoder'];
@@ -29,7 +29,7 @@ class Encoder(object):
         ChunkEncoder instance used to generate tags.
     """
     def __init__(self, n_left=2, n_right=2):
-        self.chunker = BILOUChunkEncoder();
+        self.chunker = BIOChunkEncoder();
         self.n_left = n_left;
         self.n_right = n_right;
 
@@ -90,25 +90,25 @@ class Encoder(object):
             token_feats.extend( word_type(token) )
 
             """ Add A as binary feature """
-            if token_As != None:
-                token_feats.append("A=%d" % token_As[ii])
-            """ Add B as binary feature """
-            if token_Bs != None:
-                token_feats.append("B=%d" % token_Bs[ii])
-            """ Add G as binary feature """
-            if token_Gs != None:
-                token_feats.append("G=%d" % token_Gs[ii])
-
-            if token_Fs != None and token_Js != None:
-                token_feats.append("F=%d" % token_Fs[ii])           
-                token_feats.append("J=%d" % token_Js[ii])
-                token_feats.append("FJ=%d%d" % (token_Fs[ii], token_Js[ii]) )
+#             if token_As != None:
+#                 token_feats.append("A=%d" % token_As[ii])
+#             """ Add B as binary feature """
+#             if token_Bs != None:
+#                 token_feats.append("B=%d" % token_Bs[ii])
+#             """ Add G as binary feature """
+#             if token_Gs != None:
+#                 token_feats.append("G=%d" % token_Gs[ii])
+# 
+#             if token_Fs != None and token_Js != None:
+#                 token_feats.append("F=%d" % token_Fs[ii])           
+#                 token_feats.append("J=%d" % token_Js[ii])
+#                 token_feats.append("FJ=%d%d" % (token_Fs[ii], token_Js[ii]) )
                 
             """ Add whether token is first token as feature (may be useful for case where f = j = -1) """
-            token_feats.append(token_nums[ii] == 0)
+            token_feats.append("First_token=" + (str(token_nums[ii] == 0)))
 
             """ Add whether token is second token as feature (may be useful for case where f = j = -1) """
-            token_feats.append(token_nums[ii] == 1)
+            token_feats.append("Second token=" + (str(token_nums[ii] == 1)))
 
             """ Add random A values as features (use in order to check for performance at chance) """
 #            if A_vals != None:

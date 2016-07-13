@@ -42,7 +42,8 @@ class CustomStreamHandler(logging.Handler):
             else:
                 stream = self.stdout;
             fs = "%s\n";
-            stream.write(fs % msg.encode('utf-8'));
+            #stream.write(fs % msg.encode('utf-8'));
+            stream.write(fs % msg)
             self.flush();
         except (KeyboardInterrupt, SystemExit):
             raise;

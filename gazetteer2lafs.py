@@ -2,7 +2,8 @@ import sys
 import os
 import logging
 from os.path import join
-from lxml import etree as ET
+#from lxml import etree as ET
+import xml.etree.ElementTree as ET
 
 #data = "We welcome the President of the United States of America , whose contributions have been great for America .".split()
 
@@ -58,11 +59,18 @@ def main(args):
             NEtype = line.split()[0]
             lang = line.split()[1]
             entity = ' '.join(line.split()[2:])
-            if lang = working_lang:
+            if lang == working_lang:
                 entitytypes[entity] = NEtype
-                gaz.append(entity.lower())
-                g1.append(entity.lower().split()[0])
-
+                try:
+                    u_entity = entity.lower()
+                    u_entity_start = entity.lower().split()[0]
+                    gaz.append(u_entity)
+                    g1.append(u_entity_start)
+                    #print("Added %s of type %s to gazetteer" % (u_entity, type(u_entity) ) )
+                except Exception as e:
+                    print ("Failed to encode this entity: %s" % entity)
+    
+    num_found = 0
     for fn in os.listdir(args[1]):
         if fn.endswith("ltf.xml"):
             annot_id = 0
@@ -80,33 +88,47 @@ def main(args):
                     if word == None or len(word) == 0:
                         logging.warning("Found an empty token!")
                         continue
+                    if type(word) == 'unicode':
+                        print("re-encoding unicode word %s" % (word) )
+                        word = word.decode('utf-8').encode('utf-8')
+                        
                     logging.debug("Processing %s" % word)
                     token_id = token.get('id')
-                    start_char = token.get('start_char')
-                    end_char = token.get('end_char')
+                    start_char = token.get('start_char', "-1")
+                    end_char = token.get('end_char', "-1")
                     candidate = None
-                    if word.lower() in g1: # If the current word is the first of a NE, start a new candidate with this word
+                    logging.debug("Type of word %s is %s, type of g1 is %s" % ( word.lower(), type(word.lower()), type(g1[0]) ) )
+                    
+                    # If the current word is the first of a NE, start a new candidate with this word
+                    if word.lower() in g1:
                         logging.debug("Found first word of NE")
                         candidate = Candidate(word, start_char, end_char, token_id, token_id)
-                    for c in candidates: # Add the current word to all already started candidates, and see if there are any complete NE matches
+
+                    # Add the current word to all already started candidates, and see if there are any complete NE matches
+                    for c in candidates:
                         c.appendString(word, end_char, token_id)
                         if c.lowered in gaz:
                             logging.debug("Found full NE in gazetteer")
+                            num_found += 1
                             add_annotation(out_doc, c.string, doc_id+'-ann-'+str(annot_id), entitytypes[c.string],
                                             c.start_token, c.end_token, c.start_char, c.end_char)
                             annot_id+=1
-                    if candidate: # If a new candidate was started, check whether it is a complete NE, and add it to the list of candidates
+
+                    # If a new candidate was started, check whether it is a complete NE, and add it to the list of candidates
+                    if candidate: 
                         if candidate.lowered in gaz:
                             logging.debug("Found full NE in gazetteer")
+                            num_found += 1
                             add_annotation(out_doc, candidate.string, doc_id+'-ann-'+str(annot_id), entitytypes[candidate.string],
                                             candidate.start_token, candidate.end_token, candidate.start_char, candidate.end_char)
                             annot_id+=1
+                        ## Add to candidates in case it is also the start of a longer annotation
                         candidates.append(candidate)
 
         indent(out_root)
         out_tree = ET.ElementTree(out_root)
         out_tree.write(join(laf_dir, fn.replace('ltf.xml','laf.xml')))
-
+    logging.info("Finished with %d NE matches"  % (num_found) )
 
 def add_annotation(parent, string, id_str, NEtype, begin_id, end_id, begin_char, end_char):
     annot = ET.SubElement(parent, "ANNOTATION")
