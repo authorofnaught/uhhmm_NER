@@ -48,6 +48,7 @@ def getSentsWithTokenLimit(ltf_path, laf_path, out_ltf_path, out_laf_path, logge
         if len(chars2keep) > 0:
             ext = ann.find('EXTENT')
             if ext == None:
+                doc.remove(ann)
                 continue
             start_char = int(ext.get('start_char'))
             end_char = int(ext.get('end_char'))
